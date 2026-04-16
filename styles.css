@@ -754,6 +754,8 @@ a {
   .hero {
     grid-template-columns: 1fr;
     min-height: auto;
+    gap: 18px;
+    padding-top: 10px;
   }
 
   .hero-copy {
@@ -761,17 +763,13 @@ a {
   }
 
   .hero-logo {
-    width: min(56vw, 2in);
-    height: min(56vw, 2in);
-    margin: 0 0 10px;
+    width: min(58vw, 2in);
+    height: min(58vw, 2in);
+    margin: 0 0 6px;
   }
 
   .hero-visual {
-    min-height: 540px;
-  }
-
-  .stage {
-    min-height: 540px;
+    display: none;
   }
 
   .contact-section {
@@ -810,34 +808,40 @@ a {
   }
 
   .hero {
-    gap: 22px;
-    padding-top: 16px;
+    gap: 16px;
+    padding-top: 8px;
+  }
+
+  .hero-copy {
+    text-align: center;
+  }
+
+  .hero-text,
+  .hero-actions,
+  .hero-notes {
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .hero h1 {
-    max-width: 12ch;
+    max-width: 11ch;
+    font-size: clamp(2.2rem, 10vw, 3rem);
   }
 
   .hero-actions {
     flex-direction: column;
+    width: 100%;
+    max-width: 420px;
   }
 
   .button {
     width: 100%;
   }
 
-  .hero-visual {
-    min-height: 460px;
-  }
-
-  .stage {
-    min-height: 460px;
-  }
-
-  .stage-frame {
-    min-height: 420px;
-    padding: 18px;
-    transform: none;
+  .hero-logo {
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 6px;
   }
 
   .dashboard-grid,
@@ -860,6 +864,15 @@ a {
 
   .contact-section {
     margin-top: 52px;
+    text-align: left;
+  }
+
+  .contact-actions {
+    gap: 10px;
+  }
+
+  .contact-form {
+    padding: 14px;
   }
 }
 
