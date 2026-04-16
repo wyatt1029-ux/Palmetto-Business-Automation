@@ -97,14 +97,6 @@ a {
   flex: 0 1 auto;
 }
 
-.brand-logo {
-  width: 42px;
-  height: 28px;
-  flex: 0 0 auto;
-  object-fit: contain;
-  filter: drop-shadow(0 6px 14px rgba(19, 34, 29, 0.12));
-}
-
 .brand-copy {
   display: grid;
   gap: 2px;
