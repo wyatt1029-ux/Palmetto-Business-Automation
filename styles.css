@@ -210,10 +210,31 @@ a {
   align-items: center;
   min-height: calc(92svh - 110px);
   padding: 22px 0 30px;
+  position: relative;
+}
+
+.hero-logo {
+  position: absolute;
+  left: clamp(0px, 6vw, 56px);
+  top: clamp(8px, 2vw, 24px);
+  width: clamp(210px, 28vw, 320px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(19, 34, 29, 0.16);
 }
 
 .hero-copy {
   max-width: 620px;
+  margin-left: clamp(220px, 24vw, 340px);
+  position: relative;
+  z-index: 1;
 }
 
 .eyebrow {
@@ -703,6 +724,15 @@ a {
 
   .hero-copy {
     max-width: 100%;
+    margin-left: 0;
+  }
+
+  .hero-logo {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: min(82vw, 320px);
+    margin: 0 0 14px;
   }
 
   .hero-visual {
