@@ -217,7 +217,7 @@ a {
   position: absolute;
   left: clamp(0px, 6vw, 56px);
   top: clamp(8px, 2vw, 24px);
-  width: clamp(210px, 28vw, 320px);
+  width: clamp(120px, 14vw, 160px);
   pointer-events: none;
   z-index: 0;
 }
@@ -731,7 +731,7 @@ a {
     position: relative;
     left: auto;
     top: auto;
-    width: min(82vw, 320px);
+    width: min(46vw, 160px);
     margin: 0 0 14px;
   }
 
