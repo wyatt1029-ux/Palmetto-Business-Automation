@@ -795,13 +795,14 @@ a {
 @media (max-width: 780px) {
   .page-shell {
     width: min(100% - 20px, 1180px);
-    padding-top: 10px;
+    padding-top: 2px;
   }
 
   .topbar {
     border-radius: 28px;
     align-items: flex-start;
     flex-direction: column;
+    margin-bottom: 10px;
   }
 
   .brand-logo {
@@ -814,8 +815,8 @@ a {
   }
 
   .hero {
-    gap: 16px;
-    padding-top: 8px;
+    gap: 12px;
+    padding-top: 0;
   }
 
   .hero-copy {
@@ -847,7 +848,7 @@ a {
   .hero-logo {
     width: 180px;
     height: 180px;
-    margin: 0 auto 6px;
+    margin: 0 auto 2px;
   }
 
   .dashboard-grid,
