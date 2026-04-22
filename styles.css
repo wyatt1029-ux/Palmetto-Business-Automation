@@ -741,6 +741,12 @@ a {
   font-size: 0.88rem;
 }
 
+.tiny-note a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .footer {
   display: flex;
   flex-wrap: wrap;
