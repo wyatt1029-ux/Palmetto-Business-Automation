@@ -11,3 +11,4 @@ Open `index.html` in a browser, or serve the folder with any static file server.
 - Built to support a service-area business
 - No public street address
 - Designed to be easy to publish on GitHub Pages
+- Also prepared for a future Cloudflare Pages deploy with `wrangler.toml`
