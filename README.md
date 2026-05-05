@@ -2,14 +2,22 @@
 
 Static marketing website for **Palmetto Business Automation, LLC**.
 
-## Project Goal
+## Project
 
-This site presents the business, explains the services, showcases example builds, and gives visitors simple ways to get in touch through:
+Palmetto Business Automation website
 
-- Microsoft Bookings for scheduled discovery calls
-- Text/SMS for quick contact
+## Purpose
 
-The site is designed for a service-area business and keeps the home address private.
+Static marketing site for Palmetto Business Automation LLC.
+The site presents the business, shows example builds, explains background and services, and routes visitors to Microsoft Bookings or text contact.
+
+## Stack
+
+- HTML
+- CSS
+- JavaScript
+- GitHub Pages
+- Cloudflare Pages-ready via `wrangler.toml`
 
 ## Live Hosting
 
@@ -80,6 +88,8 @@ The bio copy emphasizes:
 - Lean Six Sigma certificate from Villanova University
 - Post Graduate Program in Data Analytics from Purdue University
 
+## Example Builds
+
 The homepage includes an Example Builds section with three projects:
 
 1. Church Directory Hub
@@ -103,3 +113,9 @@ Current state:
 2. Test the Microsoft Bookings flow from the public site
 3. Keep GitHub Pages as the host unless there is a clear reason to move
 4. If needed later, use `wrangler.toml` as the starting point for Cloudflare Pages
+
+## Notes
+
+- This is a public marketing site, not an authenticated SaaS app
+- No `.env` file is required for the current static build
+- Keep folder-based URLs in sync with GitHub Pages routing
