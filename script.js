@@ -27,7 +27,7 @@ const heroVisual = document.querySelector(".hero-visual");
 const stageFrame = document.querySelector(".stage-frame");
 
 if (!prefersReducedMotion && heroVisual && stageFrame) {
-  const maxShift = 18;
+  const maxShift = 10;
 
   heroVisual.addEventListener("pointermove", (event) => {
     const bounds = heroVisual.getBoundingClientRect();
