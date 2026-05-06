@@ -586,7 +586,7 @@ a {
 
 .case-dark {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  grid-template-columns: minmax(0, 0.96fr) minmax(360px, 1.04fr);
   gap: 24px;
   background: linear-gradient(180deg, rgba(18, 34, 29, 0.98), rgba(24, 40, 34, 0.98));
   color: #fff9f1;
@@ -615,7 +615,7 @@ a {
 }
 
 .sample-preview {
-  padding: 14px;
+  padding: 12px;
   border-radius: 30px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background:
@@ -644,15 +644,15 @@ a {
 
 .preview-grid-2x2 {
   align-items: stretch;
-  gap: 14px;
+  gap: 10px;
 }
 
 .preview-image {
   width: 100%;
-  aspect-ratio: 16 / 11;
+  aspect-ratio: 1.2 / 1;
   object-fit: contain;
   object-position: center center;
-  padding: 6px;
+  padding: 4px;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: linear-gradient(180deg, rgba(64, 97, 118, 0.18), rgba(43, 70, 88, 0.18));
