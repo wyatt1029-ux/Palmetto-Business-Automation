@@ -335,11 +335,11 @@ a {
   min-height: 560px;
   padding: 28px;
   border-radius: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   background:
-    linear-gradient(180deg, #28507f 0%, #1a3558 100%);
+    linear-gradient(180deg, #1d4d43 0%, #12352d 100%);
   box-shadow:
-    0 30px 80px rgba(15, 31, 57, 0.3),
+    0 30px 80px rgba(15, 31, 57, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
   color: #fbf5e8;
   overflow: hidden;
@@ -357,9 +357,9 @@ a {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 18% 16%, rgba(117, 170, 255, 0.24), transparent 26%),
-    radial-gradient(circle at 82% 18%, rgba(92, 211, 184, 0.18), transparent 26%),
-    radial-gradient(circle at 50% 108%, rgba(255, 214, 147, 0.14), transparent 28%);
+    radial-gradient(circle at 18% 16%, rgba(92, 211, 184, 0.24), transparent 26%),
+    radial-gradient(circle at 82% 18%, rgba(255, 214, 147, 0.16), transparent 26%),
+    radial-gradient(circle at 50% 108%, rgba(255, 255, 255, 0.08), transparent 28%);
   pointer-events: none;
 }
 
@@ -378,8 +378,8 @@ a {
   margin: 0;
   padding: 9px 13px;
   border-radius: 999px;
-  background: rgba(92, 211, 184, 0.16);
-  border: 1px solid rgba(92, 211, 184, 0.28);
+  background: rgba(92, 211, 184, 0.14);
+  border: 1px solid rgba(92, 211, 184, 0.3);
   color: #eafaf3;
   font-size: 0.74rem;
   font-weight: 700;
@@ -417,8 +417,8 @@ a {
   align-items: start;
   padding: 16px 18px;
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(14px);
 }
 
@@ -428,8 +428,8 @@ a {
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: rgba(92, 211, 184, 0.16);
-  border: 1px solid rgba(92, 211, 184, 0.34);
+  background: rgba(92, 211, 184, 0.14);
+  border: 1px solid rgba(92, 211, 184, 0.36);
   color: #ebfff7;
   font-size: 0.82rem;
   font-weight: 700;
@@ -445,7 +445,7 @@ a {
 
 .fix-item p {
   margin: 6px 0 0;
-  color: rgba(251, 245, 232, 0.78);
+  color: rgba(251, 245, 232, 0.76);
   line-height: 1.5;
   font-size: 0.95rem;
 }
@@ -453,7 +453,7 @@ a {
 .fix-result {
   margin-top: auto;
   padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.13);
 }
 
 .fix-result span {
@@ -461,8 +461,8 @@ a {
   align-items: center;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #d8f0e7;
   font-size: 0.74rem;
   font-weight: 700;
@@ -473,7 +473,7 @@ a {
 .fix-result p {
   margin: 10px 0 0;
   max-width: 22ch;
-  color: #fff7ea;
+  color: #f6f4ef;
   font-size: 1.08rem;
   line-height: 1.42;
   font-weight: 600;
