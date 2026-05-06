@@ -1,0 +1,135 @@
+Palmetto Business Automation Website Dev Handoff
+
+Project
+-------
+Palmetto Business Automation website
+
+Purpose
+-------
+Static marketing site for Palmetto Business Automation LLC.
+The site is intended to present the business, show example builds, explain background and services, and route visitors to either Microsoft Bookings or text contact.
+
+Current live hosting
+--------------------
+- Primary live host: GitHub Pages
+- GitHub repo: https://github.com/wyatt1029-ux/Palmetto-Business-Automation
+- Live site: https://wyatt1029-ux.github.io/Palmetto-Business-Automation/
+- Cloudflare Pages: not live yet
+- Repo is prepared for future Cloudflare Pages deployment with wrangler.toml
+
+Current site structure
+---------------------
+- Homepage: index.html
+- Bio page: about.html
+- Example Builds page: example-builds/index.html
+- Case studies:
+  - case-studies/church-directory-hub/index.html
+  - case-studies/concession-ordering/index.html
+  - case-studies/business-dashboard/index.html
+
+Current navigation
+------------------
+Homepage nav:
+- Services
+- Example Builds
+- Who I help
+- Bio
+- Contact
+
+Bio page nav:
+- Services
+- Example Builds
+- Bio
+- Contact
+
+Current contact setup
+---------------------
+- Book a Discovery Call button:
+  - https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/
+- Send a Text button:
+  - sms:8439000124
+- Text fallback number shown on page:
+  - 843-900-0124
+
+Business details used on the site
+---------------------------------
+- Legal name: Palmetto Business Automation, LLC
+- Public business name: Palmetto Business Automation
+- Location: Goose Creek, South Carolina
+- Service-area business
+- Service area: Goose Creek, Charleston, Summerville, Mount Pleasant
+- Business focus: Excel automation, reporting, workflow improvements, data analysis, dashboards
+- Available for in-person or virtual meetings
+- No public street address
+
+Bio copy direction
+------------------
+Preferred bio direction includes:
+- 20+ years of experience in finance, business management, and business analysis
+- work across aerospace, construction, DoD, industrial maintenance, and contracts environments
+- retired United States Air Force veteran
+- local Lowcountry professional
+- College of Charleston and Charleston Southern University
+- Lean Six Sigma certificate from Villanova University
+- Post Graduate Program in Data Analytics from Purdue University
+- interest in Excel automation, workflow tools, and AI-assisted business automation where it makes sense
+
+Example Builds section
+---------------------
+The homepage now includes an Example Builds section with three cards:
+1. Church Directory Hub
+2. Remote Concession Ordering App
+3. Business Dashboard & Reporting Portal
+
+Each has a corresponding case-study page.
+The Example Builds page also has CTA buttons back to booking and the homepage contact section.
+
+Important implementation notes
+------------------------------
+- Folder-based URLs are used for GitHub Pages compatibility.
+- The site should use links like /example-builds/ and /case-studies/.../ rather than .html filenames.
+- Example Builds and case-study pages should stay aligned with the main homepage nav.
+- The repo contains a .gitignore entry for .wrangler/
+- wrangler.toml exists so a future Cloudflare Pages deployment is easy to add
+
+Cloudflare status
+-----------------
+- Cloudflare was not live at the time of this handoff.
+- The repo was only prepared for a future Cloudflare Pages deploy.
+- There is no active Cloudflare Pages deployment yet.
+
+Recent development history
+-------------------------
+- Built the homepage with a polished visual style
+- Added the logo image into the hero
+- Added the portrait and a separate Bio page
+- Reworked CTA wording several times to remove confusing audit language
+- Wired the discovery call buttons to Microsoft Bookings
+- Added the text button with a fallback phone number
+- Added Example Builds and case-study pages
+- Fixed broken folder routing for GitHub Pages
+- Added Cloudflare Pages readiness files
+
+Current recommended next steps
+------------------------------
+1. Verify the Example Builds and case-study pages live on GitHub Pages
+2. Test the Microsoft Bookings flow from the public site
+3. Keep the site on GitHub Pages unless there is a specific reason to move hosting
+4. If moving to Cloudflare later, use the existing wrangler.toml as the starting point
+
+Files of interest
+-----------------
+- index.html
+- about.html
+- styles.css
+- script.js
+- example-builds/index.html
+- case-studies/church-directory-hub/index.html
+- case-studies/concession-ordering/index.html
+- case-studies/business-dashboard/index.html
+- wrangler.toml
+- .gitignore
+
+Notes
+-----
+This handoff is meant to be pasted into a new project so the development history and current state are preserved in summary form.

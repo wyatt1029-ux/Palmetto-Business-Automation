@@ -1,0 +1,352 @@
+Palmetto Business Automation Website Full Development Log
+
+Project Overview
+----------------
+Business: Palmetto Business Automation, LLC
+Public Name: Palmetto Business Automation
+Site Type: Static marketing website for a service-area business
+Primary Goal: Present the business, explain services, show example builds, route visitors to Microsoft Bookings or text contact, and support future growth with a professional portfolio-style presence.
+
+Hosting and Deployment History
+------------------------------
+The site was originally built and published as a static GitHub Pages site in the repo:
+https://github.com/wyatt1029-ux/Palmetto-Business-Automation
+
+Live GitHub Pages URL:
+https://wyatt1029-ux.github.io/Palmetto-Business-Automation/
+
+Cloudflare was considered later, but at the time of this log it was not live. The repo was prepared for future Cloudflare Pages deployment with a wrangler.toml file and a .gitignore entry for the .wrangler cache folder.
+
+Key Hosting Conclusion
+----------------------
+The live site is hosted on GitHub Pages. Cloudflare is not an active host yet.
+
+Initial Business / Website Direction
+------------------------------------
+The site was planned as a low-cost, simple, professional website for a home-based service business.
+
+Core business constraints and preferences:
+- Do not show the home address publicly
+- Use service-area business framing
+- Support in-person or virtual meetings
+- Keep costs low
+- Do not require Google Workspace
+- Keep Microsoft 365 for business operations later
+- Use a dedicated Google account for business setup
+- Use Microsoft Bookings for discovery calls
+- Use a text option for quick contact
+
+The business description used throughout the site focuses on:
+- Excel automation
+- dashboards and reporting
+- workflow improvements
+- data cleanup and analysis
+- business process optimization
+- AI-assisted automation where appropriate
+
+Brand and Visual Direction
+-------------------------
+The site was intentionally styled as a polished, modern, editorial-style marketing page rather than a generic template.
+
+Visual direction choices:
+- warm neutral background
+- dark green and deep ink accents
+- large display typography
+- clean cards and glass-like top bar
+- image-led layout with breathing room
+- minimal clutter
+- premium but practical feel
+
+Typography and brand tone were chosen to feel:
+- professional
+- calm
+- modern
+- credible
+- business-focused
+
+Major Site Content Decisions
+----------------------------
+
+1) Homepage
+-----------
+The homepage became the primary conversion page, with:
+- headline
+- service summary
+- hero logo badge
+- services section
+- who I help / how I help / why work with me section
+- service area section
+- contact section
+- example builds section
+
+The headline and intro were rewritten several times until the wording was clear and direct:
+- Palmetto Business Automation
+- Excel, reporting, and workflow automation for small businesses
+
+Hero CTA decisions:
+- Book a Discovery Call
+- Send a Text
+
+The “Request a Reporting & Automation Audit” button was removed because it felt confusing and too specific. The user preferred a simpler, broader contact model.
+
+2) Contact Model
+---------------
+The site’s contact paths were simplified to:
+- Microsoft Bookings for scheduled discovery calls
+- SMS/text for fast contact
+
+Final contact behavior:
+- Book a Discovery Call -> Microsoft Bookings
+- Send a Text -> 843-900-0124
+
+The site was updated so desktop users do not get stranded with a confusing text-app prompt:
+- the Send a Text button remains
+- the phone number is also shown directly as fallback text
+
+3) Bio Page
+----------
+A separate Bio page was created so the homepage could stay focused on conversion.
+
+The bio page includes:
+- a portrait photo
+- a longer background narrative
+- education and professional credentials
+- Air Force retirement status
+- industry experience
+- AI-assisted automation mention
+
+The user’s preferred bio positioning includes:
+- more than 20 years in finance, business management, and business analysis
+- work across aerospace, construction, DoD, industrial maintenance, and contracts
+- retired United States Air Force veteran
+- local Lowcountry roots
+- College of Charleston and Charleston Southern University
+- Lean Six Sigma certificate from Villanova University
+- Post Graduate Program in Data Analytics from Purdue University
+- interest in Excel automation, workflow tools, and AI-assisted automation where it makes sense
+
+4) Service Area
+--------------
+The service area copy was adjusted to better match the business model.
+
+The final direction became:
+- Based in Goose Creek and serving businesses throughout the Lowcountry
+- virtual support available across South Carolina and beyond
+- in-person or virtual meetings available when helpful
+
+The intent was to keep the home address private while still sounding local and credible.
+
+5) Example Builds
+---------------
+An Example Builds section was added to showcase practical work and increase trust.
+
+The three example projects are:
+1. Church Directory Hub
+2. Remote Concession Ordering App
+3. Business Dashboard & Reporting Portal
+
+The purpose of Example Builds is to demonstrate:
+- custom app thinking
+- workflow automation
+- data organization
+- permission/approval flows
+- ordering/inventory workflows
+- dashboard/reporting automation
+
+Each example project also has a corresponding case-study page.
+
+Example Builds CTA language:
+- Have a workflow like this?
+- Request a Custom App Demo
+- Schedule a Consultation
+
+The section was intended to show that the business can adapt the same automation patterns to many different use cases.
+
+6) Case Study Pages
+-------------------
+Three case-study pages were created:
+- Church Directory Hub
+- Remote Concession Ordering App
+- Business Dashboard & Reporting Portal
+
+Each case-study page follows the same content pattern:
+- project title
+- problem
+- solution
+- features
+- workflow
+- business value
+- adaptable use cases
+- CTA to schedule a consultation
+
+These pages help support credibility and give the site more depth than a single-page brochure.
+
+Bookings / Scheduling Setup History
+-----------------------------------
+The scheduling flow was one of the main workstreams.
+
+The user wanted:
+- a public booking page
+- no Google Workspace dependency
+- low-cost setup
+- a simple discovery-call flow
+
+Microsoft Bookings was chosen because it fits Microsoft 365 Business Standard and supports a public scheduling link.
+
+Final booking flow:
+- Book a Discovery Call button opens the Microsoft Bookings page
+- public booking link is used on the website
+- the service is set for a 30-minute meeting
+- the user’s side-business hours were narrowed to a small evening window
+
+The booking availability troubleshooting involved:
+- checking staff availability
+- checking service-specific scheduling policy
+- checking default scheduling policy
+- checking minimum lead time
+- ensuring the public page uses the right staff assignment rules
+- testing the page for time slots that should or should not appear
+
+The user observed that Microsoft Bookings can show times that do not match the main “work hours” unless the service-level scheduling policy is aligned. The workstream concluded that Bookings has multiple layers:
+- staff hours
+- service availability
+- general booking page availability
+- calendar busy/free state
+
+Business hours eventually used for booking:
+- Monday-Friday 3:00 PM to 6:00 PM
+
+Contact Decision History
+------------------------
+The contact area was simplified over time:
+- first the site used email-heavy CTAs
+- then the audit CTA was removed
+- then text contact was added
+- then booking was connected to Microsoft Bookings
+
+The final contact strategy is intentionally simple:
+- scheduled calls via Bookings
+- quick questions via text
+
+Text number used:
+- 843-900-0124
+
+Development and Content Revision History
+--------------------------------------
+The site went through several rounds of refinement:
+
+1. Initial polished homepage build
+- modern landing page
+- hero with strong headline
+- service sections
+- service area
+- contact section
+
+2. Logo integration
+- the full logo was added
+- it was resized several times because the first placements were too large
+- it ended up as a compact square badge in the hero rather than a giant header image
+
+3. Mobile cleanup
+- the mobile layout was reworked so the content stacks properly
+- oversized hero art was hidden on smaller screens
+- spacing was tightened so the page starts near the top
+
+4. Booking and CTA simplification
+- confusing audit language removed
+- Book a Discovery Call kept
+- Send a Text added
+- fallback number shown for desktop users
+
+5. Bio split into separate page
+- homepage stayed focused on selling
+- bio moved to a dedicated page
+
+6. Example Builds section and pages added
+- homepage now has example project cards
+- separate example-builds page created
+- case-study pages added for each example
+
+7. GitHub Pages routing fix
+- folder-based URLs were used for compatibility
+- broken .html-style links were corrected
+
+8. Cloudflare readiness
+- wrangler.toml added
+- .gitignore added for .wrangler/
+- README updated to note future Cloudflare Pages readiness
+
+Cloudflare Readiness Notes
+--------------------------
+The site is not deployed on Cloudflare yet, but the repo has been prepared for that option.
+
+Preparation steps completed:
+- added wrangler.toml
+- ignored .wrangler/ cache files
+- kept the site static and folder-based
+- avoided any Cloudflare-specific live dependencies
+
+At this point, Cloudflare could be added later without redesigning the site from scratch.
+
+Current File Structure
+---------------------
+Main site files:
+- index.html
+- about.html
+- styles.css
+- script.js
+- README.md
+
+Example Builds:
+- example-builds/index.html
+
+Case studies:
+- case-studies/church-directory-hub/index.html
+- case-studies/concession-ordering/index.html
+- case-studies/business-dashboard/index.html
+
+Cloudflare prep:
+- wrangler.toml
+- .gitignore
+
+Assets:
+- assets/logo.png
+- assets/owner-photo.png
+
+Current Site Behavior
+---------------------
+- Homepage nav includes Example Builds and Bio
+- Discovery call buttons open Microsoft Bookings
+- Send a Text opens SMS on mobile and shows a fallback phone number
+- Example Builds cards point to case-study pages
+- Case-study pages link back to Example Builds
+- The site is designed to work on GitHub Pages with folder-based URLs
+
+Current Recommended Next Steps
+------------------------------
+1. Verify the Example Builds and case-study pages load correctly in the live GitHub Pages deployment
+2. Test the Book a Discovery Call button from the public site
+3. Confirm the Send a Text fallback behavior looks good on desktop and mobile
+4. Keep the site on GitHub Pages unless Cloudflare becomes useful for a custom domain or edge features
+5. If migrating to Cloudflare later, reuse the existing static file structure and wrangler.toml setup
+
+Key Lessons from the Build
+--------------------------
+- Separate the bio from the homepage when the homepage needs to convert visitors
+- Use folder-based URLs for static site compatibility
+- Keep booking and text contact paths simple
+- Microsoft Bookings can require service-level and staff-level alignment, not just a general work-hours setting
+- A business site feels more trustworthy when it shows concrete example builds and practical case studies
+- Keeping the repo Cloudflare-ready does not mean Cloudflare has to be used immediately
+
+End State at Handoff
+--------------------
+The site is a polished static marketing site with:
+- homepage
+- bio page
+- example builds page
+- three case-study pages
+- Microsoft Bookings integration
+- text fallback contact
+- GitHub Pages hosting
+- Cloudflare-ready configuration for later use
