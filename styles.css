@@ -471,11 +471,11 @@ a {
 }
 
 .fix-result p {
-  margin: 10px 0 0;
-  max-width: 22ch;
+  margin: 12px 0 0;
+  max-width: 30ch;
   color: #f6f4ef;
-  font-size: 1.08rem;
-  line-height: 1.42;
+  font-size: 1.04rem;
+  line-height: 1.5;
   font-weight: 600;
 }
 
