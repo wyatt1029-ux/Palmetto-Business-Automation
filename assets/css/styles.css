@@ -522,6 +522,7 @@ a {
   border: 1px solid var(--line);
   background: rgba(255, 251, 245, 0.76);
   box-shadow: 0 14px 40px rgba(19, 34, 29, 0.06);
+  min-width: 0;
 }
 
 .example-card h3,
@@ -535,6 +536,11 @@ a {
   margin: 0;
   color: var(--muted);
   line-height: 1.7;
+}
+
+.example-card a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .card-label {
