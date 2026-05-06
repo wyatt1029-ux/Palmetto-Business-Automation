@@ -1,11 +1,11 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Palmetto Business Automation helps small businesses reduce manual work with Excel automation, dashboards, and workflow improvements."
+      content="Palmetto Business Automation builds clean, static small-business websites and practical automation tools for reporting, Excel cleanup, dashboards, and workflow improvement."
     />
     <meta name="theme-color" content="#12352d" />
     <title>Palmetto Business Automation</title>
@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="/assets/css/styles.css" />
   </head>
   <body>
     <div class="backdrop backdrop-one" aria-hidden="true"></div>
@@ -23,7 +23,7 @@
 
     <div class="page-shell" id="top">
       <header class="topbar">
-        <a class="brand" href="#top">
+        <a class="brand" href="#top" aria-label="Palmetto Business Automation home">
           <span class="brand-copy">
             <strong>Palmetto Business Automation</strong>
             <span>Excel, dashboards, and workflow systems</span>
@@ -31,20 +31,28 @@
         </a>
 
         <nav class="topnav" aria-label="Primary">
-          <a href="#services">Services</a>
-          <a href="./example-builds/">Example Builds</a>
-          <a href="#process">How I help</a>
-          <a href="./about.html">Bio</a>
-          <a href="#contact">Contact</a>
+          <a href="/">Home</a>
+          <a href="/services/">Services</a>
+          <a href="/example-builds/">Example Builds</a>
+          <a href="/who-i-help/">Who I Help</a>
+          <a href="/about/">About</a>
+          <a href="/contact/">Contact</a>
         </nav>
 
-        <a class="topbar-cta" href="https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/" target="_blank" rel="noreferrer">Book a Discovery Call</a>
+        <a
+          class="topbar-cta"
+          href="https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Book a Discovery Call
+        </a>
       </header>
 
       <main>
         <section class="hero">
           <div class="hero-logo reveal" aria-hidden="true">
-            <img src="./assets/logo.png" alt="" />
+            <img src="/assets/images/logo.png" alt="" />
           </div>
 
           <div class="hero-copy reveal">
@@ -56,7 +64,14 @@
             </p>
 
             <div class="hero-actions">
-              <a class="button button-primary" href="https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/" target="_blank" rel="noreferrer">Book a Discovery Call</a>
+              <a
+                class="button button-primary"
+                href="https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Book a Discovery Call
+              </a>
               <a class="button button-secondary" href="sms:8439000124">Send a Text</a>
             </div>
             <p class="tiny-note">Or text <a href="sms:8439000124">843-900-0124</a> directly if your app does not open.</p>
@@ -118,39 +133,28 @@
           <div class="section-heading">
             <p class="eyebrow">Services</p>
             <h2>Practical automation work that helps teams move faster.</h2>
+            <p>
+              Small businesses do not need a giant software build to make a real improvement. They usually need cleaner reporting, fewer manual steps, and a few dependable tools that fit the way the business already works.
+            </p>
           </div>
 
-          <div class="service-list">
-            <article class="service-item">
-              <p class="service-kicker">01</p>
-              <div>
-                <h3>Excel automation</h3>
-                <p>VBA-driven tools, workbook cleanup, and repeatable processes that reduce manual entry.</p>
-              </div>
+          <div class="example-grid">
+            <article class="example-card">
+              <p class="card-label">Excel & reporting cleanup</p>
+              <h3>Workbook cleanup and report repair</h3>
+              <p>Fix messy spreadsheets, merge exports, remove duplicates, standardize formulas, and make reporting easier to trust.</p>
             </article>
 
-            <article class="service-item">
-              <p class="service-kicker">02</p>
-              <div>
-                <h3>Dashboards and reporting</h3>
-                <p>Clear, useful views for owners and managers who need answers without digging through rows.</p>
-              </div>
+            <article class="example-card">
+              <p class="card-label">Power Automate workflows</p>
+              <h3>Repeat tasks that run themselves</h3>
+              <p>Automate approvals, reminders, file movement, and status updates so the same work does not get done by hand every week.</p>
             </article>
 
-            <article class="service-item">
-              <p class="service-kicker">03</p>
-              <div>
-                <h3>Process improvement</h3>
-                <p>Workflow simplification, handoff cleanup, and automation ideas that fit the way your business already works.</p>
-              </div>
-            </article>
-
-            <article class="service-item">
-              <p class="service-kicker">04</p>
-              <div>
-                <h3>Data analysis</h3>
-                <p>Python and SQL support for data cleanup, analysis, and reporting logic behind the scenes.</p>
-              </div>
+            <article class="example-card">
+              <p class="card-label">Dashboards & reporting</p>
+              <h3>Simple views with the numbers that matter</h3>
+              <p>Build practical dashboards in Power BI or simple web interfaces so owners can see revenue, inventory, and performance at a glance.</p>
             </article>
           </div>
         </section>
@@ -158,135 +162,162 @@
         <section id="example-builds" class="content-section reveal">
           <div class="section-heading">
             <p class="eyebrow">Example Builds</p>
-            <h2>Practical examples of custom apps, portals, dashboards, and workflow systems.</h2>
+            <h2>Real examples of the kinds of systems I build.</h2>
             <p>
-              These example builds show how custom software can turn manual work, scattered spreadsheets, and approval bottlenecks into clean web-based workflows.
+              These examples show what a finished automation or reporting project can look like when the goal is to make the work easier to run every day.
             </p>
           </div>
 
           <div class="example-grid">
             <article class="example-card">
-              <p class="card-label">Private Directory + Approval Workflow</p>
-              <h3>Church Directory Hub</h3>
-              <p>A branded private directory app with searchable household profiles, role-based access, admin approvals, privacy controls, and member update requests.</p>
+              <p class="card-label">Monthly report cleanup</p>
+              <h3>Problem</h3>
+              <p>Reports were being copied from multiple exports and cleaned by hand every month.</p>
+              <h3>Build</h3>
+              <p>Automated cleanup logic with standardized output sheets and consistent formatting.</p>
+              <h3>Result</h3>
+              <p>Less manual work, fewer mistakes, and a cleaner report handoff.</p>
               <div class="tag-list">
-                <span>searchable directory</span>
-                <span>role-based access</span>
-                <span>admin approval workflow</span>
-                <span>profile management</span>
-                <span>privacy controls</span>
-                <span>branded client portal</span>
+                <span>Excel</span><span>VBA</span><span>cleanup</span>
               </div>
-              <a class="button button-primary" href="./case-studies/church-directory-hub/">View Example</a>
             </article>
 
             <article class="example-card">
-              <p class="card-label">Online Ordering + Inventory Workflow</p>
-              <h3>Remote Concession Ordering App</h3>
-              <p>A remote order-ahead system for concession stands with menu items, live inventory tracking, kitchen order visibility, and payment-ready checkout flow.</p>
+              <p class="card-label">Multi-export dashboard</p>
+              <h3>Problem</h3>
+              <p>Decision-making depended on several exports that never lined up the same way.</p>
+              <h3>Build</h3>
+              <p>Combined spreadsheets into a single view with clear totals and trend tracking.</p>
+              <h3>Result</h3>
+              <p>Leadership could review one dashboard instead of hunting through files.</p>
               <div class="tag-list">
-                <span>online ordering</span>
-                <span>inventory tracking</span>
-                <span>order queue</span>
-                <span>kitchen dashboard</span>
-                <span>payment-ready flow</span>
-                <span>workflow automation</span>
+                <span>Power BI</span><span>SQL</span><span>reporting</span>
               </div>
-              <a class="button button-primary" href="./case-studies/concession-ordering/">View Example</a>
             </article>
 
             <article class="example-card">
-              <p class="card-label">Reporting + Data Automation</p>
-              <h3>Business Dashboard &amp; Reporting Portal</h3>
-              <p>A dashboard-style automation example showing how scattered spreadsheets, reports, and business data can be cleaned, organized, and turned into useful reporting and decision tools.</p>
+              <p class="card-label">Power Automate approval flow</p>
+              <h3>Problem</h3>
+              <p>Approvals were getting lost in email threads and manual follow-up messages.</p>
+              <h3>Build</h3>
+              <p>Created a workflow with approvals, reminders, and clean status tracking.</p>
+              <h3>Result</h3>
+              <p>Faster turnaround and fewer tasks falling through the cracks.</p>
               <div class="tag-list">
-                <span>data cleanup</span>
-                <span>dashboard reporting</span>
-                <span>KPI tracking</span>
-                <span>spreadsheet replacement</span>
-                <span>workflow visibility</span>
-                <span>decision support</span>
+                <span>Power Automate</span><span>approval flow</span><span>notifications</span>
               </div>
-              <a class="button button-primary" href="./case-studies/business-dashboard/">View Example</a>
+            </article>
+
+            <article class="example-card">
+              <p class="card-label">Lead / contact tracker</p>
+              <h3>Problem</h3>
+              <p>Contacts were spread across spreadsheets and inboxes, making follow-up hard.</p>
+              <h3>Build</h3>
+              <p>Built a simple tracking view with status fields, notes, and next-step reminders.</p>
+              <h3>Result</h3>
+              <p>The team knew who needed attention and what happened next.</p>
+              <div class="tag-list">
+                <span>tracking</span><span>workflow</span><span>Excel</span>
+              </div>
+            </article>
+
+            <article class="example-card">
+              <p class="card-label">Inventory / concession tracker</p>
+              <h3>Problem</h3>
+              <p>Busy event sales were being tracked manually, which made inventory visibility difficult.</p>
+              <h3>Build</h3>
+              <p>Built a lightweight order and inventory workflow with easier reporting.</p>
+              <h3>Result</h3>
+              <p>More visibility for stock and sales, with less clipboard work.</p>
+              <div class="tag-list">
+                <span>inventory</span><span>orders</span><span>reports</span>
+              </div>
+            </article>
+
+            <article class="example-card">
+              <p class="card-label">Owner dashboard</p>
+              <h3>Problem</h3>
+              <p>Owners needed a quick way to review the business without opening several files.</p>
+              <h3>Build</h3>
+              <p>Designed a summary dashboard focused on the numbers that drive the business.</p>
+              <h3>Result</h3>
+              <p>One simple view that supports clearer decisions.</p>
+              <div class="tag-list">
+                <span>dashboard</span><span>summary</span><span>visibility</span>
+              </div>
             </article>
           </div>
-
-          <p class="example-note">
-            Each example shows a different automation pattern: directories and permissions, ordering and inventory, and dashboards and reporting. The same patterns can be adapted to many businesses and organizations.
-          </p>
         </section>
 
-        <section id="process" class="content-section content-section-alt reveal">
+        <section id="who-i-help" class="content-section reveal">
           <div class="section-heading">
-            <p class="eyebrow">Who I help, how I help, why work with me</p>
-            <h2>Simple support for small businesses that want cleaner systems.</h2>
-          </div>
-
-          <div class="process-grid">
-            <div class="process-step">
-              <span>Who I help</span>
-              <h3>Owners and small teams</h3>
-              <p>Businesses that need better reporting, fewer manual tasks, and more reliable processes without hiring a big team.</p>
-            </div>
-            <div class="process-step">
-              <span>How I help</span>
-              <h3>Excel, automation, and dashboards</h3>
-              <p>Workbook cleanup, VBA automation, Power Automate, Python, SQL, and dashboards that make the work easier to run and review.</p>
-            </div>
-            <div class="process-step">
-              <span>Why work with me</span>
-              <h3>Practical and easy to understand</h3>
-              <p>Clear communication, simple handoffs, service-area support, and no on-site visits. The goal is useful improvements, not extra complexity.</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="service-area" class="content-section reveal">
-          <div class="section-heading">
-            <p class="eyebrow">Service area</p>
-            <h2>Based in Goose Creek and serving businesses throughout the Lowcountry.</h2>
-          </div>
-
-          <div class="service-area-panel">
+            <p class="eyebrow">Who I Help</p>
+            <h2>Built for teams that use spreadsheets as their main system.</h2>
             <p>
-              Virtual support is available across South Carolina and beyond, with in-person or virtual meetings available when helpful.
-            </p>
-          </div>
-        </section>
-
-        <section id="contact" class="contact-section reveal">
-          <div class="contact-copy">
-            <p class="eyebrow">Contact</p>
-            <h2>Ready to talk through a project?</h2>
-            <p>
-              Send a note if you want help with Excel automation, reporting cleanup, or workflow improvements.
-              Email is the fastest way to reach me right now.
+              If the business runs on Excel, emails, shared folders, and a lot of manual follow-up, there is usually room to make the work calmer and more reliable.
             </p>
           </div>
 
-          <div class="contact-actions">
-            <div class="contact-links">
-              <a class="button button-primary" href="https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/" target="_blank" rel="noreferrer">
+          <div class="example-grid">
+            <article class="example-card">
+              <h3>Small business owners</h3>
+              <p>Need cleaner reporting, better visibility, and a simpler way to understand what is happening in the business.</p>
+            </article>
+
+            <article class="example-card">
+              <h3>Service-area businesses</h3>
+              <p>Need scheduling, reporting, dispatch, and status tracking that works across field work and office work.</p>
+            </article>
+
+            <article class="example-card">
+              <h3>Local contractors</h3>
+              <p>Need job tracking, estimates, change management, and a better way to move information between the field and office.</p>
+            </article>
+
+            <article class="example-card">
+              <h3>Office managers</h3>
+              <p>Need repeatable processes for approvals, reports, document handling, and day-to-day coordination.</p>
+            </article>
+
+            <article class="example-card">
+              <h3>Booster clubs and concessions</h3>
+              <p>Need simple order, inventory, and reporting systems that keep lines moving during busy events.</p>
+            </article>
+
+            <article class="example-card">
+              <h3>Teams using Excel as their main system</h3>
+              <p>Need less copy and paste, fewer duplicate files, and a better path from spreadsheet chaos to a cleaner workflow.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="content-section reveal">
+          <div class="cta-panel">
+            <h2>Need a small system to feel a lot simpler?</h2>
+            <p>
+              I can help you clean up the spreadsheet mess, automate the repeat steps, and build a better view of what is going on.
+            </p>
+            <div class="hero-actions">
+              <a
+                class="button button-primary"
+                href="https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Book a Discovery Call
               </a>
-              <a class="button button-secondary" href="sms:8439000124">
-                Send a Text
-              </a>
+              <a class="button button-secondary" href="sms:8439000124">Send a Text</a>
             </div>
-            <p class="tiny-note">Text <a href="sms:8439000124">843-900-0124</a> directly if the button opens an app you do not use. Bookings will open your Microsoft calendar.</p>
           </div>
         </section>
       </main>
 
       <footer class="footer">
         <p>Palmetto Business Automation LLC</p>
-        <p>Excel automation · Dashboards · Workflow improvements</p>
+        <p>Goose Creek, SC · Virtual or in-person support · Excel automation · Dashboards · Workflow improvements</p>
       </footer>
     </div>
 
-    <script src="./script.js"></script>
+    <script src="/assets/js/main.js"></script>
   </body>
 </html>
-
-
-

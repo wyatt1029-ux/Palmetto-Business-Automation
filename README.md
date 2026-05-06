@@ -1,121 +1,52 @@
-# Palmetto Business Automation Website
+# Palmetto Business Automation
 
-Static marketing website for **Palmetto Business Automation, LLC**.
-
-## Project
-
-Palmetto Business Automation website
-
-## Purpose
-
-Static marketing site for Palmetto Business Automation LLC.
-The site presents the business, shows example builds, explains background and services, and routes visitors to Microsoft Bookings or text contact.
+Static marketing website for Palmetto Business Automation, LLC.
 
 ## Stack
 
 - HTML
 - CSS
 - JavaScript
-- GitHub Pages
-- Cloudflare Pages-ready via `wrangler.toml`
+- Cloudflare Pages
 
-## Live Hosting
+## Live Structure
 
-- Primary live host: GitHub Pages
-- Repo: https://github.com/wyatt1029-ux/Palmetto-Business-Automation
-- Live site: https://wyatt1029-ux.github.io/Palmetto-Business-Automation/
-- Cloudflare Pages: not live yet
+- `/`
+- `/services/`
+- `/example-builds/`
+- `/who-i-help/`
+- `/about/`
+- `/contact/`
 
-The repo is already prepared for future Cloudflare deployment with `wrangler.toml`.
+## Project Structure
 
-## Local Preview
-
-Open `index.html` in a browser, or serve the folder with any static file server.
-
-## Site Structure
-
-- `index.html` - homepage
-- `about.html` - bio page
-- `example-builds/index.html` - overview of example builds
-- `case-studies/church-directory-hub/index.html`
-- `case-studies/concession-ordering/index.html`
-- `case-studies/business-dashboard/index.html`
-
-## Contact Setup
-
-- Book a Discovery Call:
-  - https://outlook.office.com/book/PalmettoBusinessAutomation@palmettobusinessautomation.com/
-- Send a Text:
-  - `sms:8439000124`
-- Fallback phone number shown on the site:
-  - `843-900-0124`
-
-## Business Details
-
-- Legal name: Palmetto Business Automation, LLC
-- Public name: Palmetto Business Automation
-- Location: Goose Creek, South Carolina
-- Service area: Goose Creek, Charleston, Summerville, Mount Pleasant
-- Business focus: Excel automation, reporting, workflow improvements, dashboards, and data analysis
-- Meetings: in-person or virtual
-
-## Navigation
-
-Homepage links:
-
-- Services
-- Example Builds
-- Who I help
-- Bio
-- Contact
-
-Bio page links:
-
-- Services
-- Example Builds
-- Bio
-- Contact
-
-## Bio Direction
-
-The bio copy emphasizes:
-
-- 20+ years in finance, business management, and business analysis
-- experience across aerospace, construction, DoD, industrial maintenance, and contracts
-- retired United States Air Force veteran
-- Lowcountry roots
-- College of Charleston and Charleston Southern University
-- Lean Six Sigma certificate from Villanova University
-- Post Graduate Program in Data Analytics from Purdue University
-
-## Example Builds
-
-The homepage includes an Example Builds section with three projects:
-
-1. Church Directory Hub
-2. Remote Concession Ordering App
-3. Business Dashboard & Reporting Portal
-
-Each example build has a matching case-study page.
-
-## Status
-
-Current state:
-
-- Site is live on GitHub Pages
-- Cloudflare Pages is not active yet
-- Folder-based URLs are used for GitHub Pages compatibility
-- Example Builds and case-study pages are aligned with the main navigation
-
-## Recommended Next Steps
-
-1. Verify the Example Builds and case-study pages on the live GitHub Pages site
-2. Test the Microsoft Bookings flow from the public site
-3. Keep GitHub Pages as the host unless there is a clear reason to move
-4. If needed later, use `wrangler.toml` as the starting point for Cloudflare Pages
+- `index.html`
+- `services/index.html`
+- `example-builds/index.html`
+- `who-i-help/index.html`
+- `about/index.html`
+- `contact/index.html`
+- `assets/css/styles.css`
+- `assets/js/main.js`
+- `assets/images/`
+- `_redirects`
+- `_headers`
 
 ## Notes
 
-- This is a public marketing site, not an authenticated SaaS app
-- No `.env` file is required for the current static build
-- Keep folder-based URLs in sync with GitHub Pages routing
+- The site is fully static.
+- No backend, forms, or database are used.
+- The pages are folder-based so they work cleanly on Cloudflare Pages.
+- `_redirects` keeps the URLs tidy.
+- `_headers` adds basic security headers.
+
+## Editing
+
+- Update page content directly in the relevant `index.html` file.
+- Keep shared styling in `assets/css/styles.css`.
+- Keep lightweight behavior in `assets/js/main.js`.
+- Store brand images in `assets/images/`.
+
+## Deployment
+
+Cloudflare Pages is the intended host for this version of the site.
