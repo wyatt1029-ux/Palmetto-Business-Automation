@@ -1061,7 +1061,6 @@ a {
     margin: 0 auto 2px;
   }
 
-  .dashboard-grid,
   .process-grid {
     grid-template-columns: 1fr;
   }
@@ -1091,10 +1090,6 @@ a {
     max-width: 420px;
     width: 100%;
     justify-self: center;
-  }
-
-  .floating-chip {
-    display: none;
   }
 
   .contact-section {
