@@ -649,12 +649,13 @@ a {
 
 .preview-image {
   width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: cover;
-  object-position: center top;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  object-position: center center;
+  padding: 8px;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  background: linear-gradient(180deg, rgba(64, 97, 118, 0.92), rgba(43, 70, 88, 0.92));
+  background: linear-gradient(180deg, rgba(64, 97, 118, 0.18), rgba(43, 70, 88, 0.18));
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
