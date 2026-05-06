@@ -15,7 +15,7 @@
   --radius-lg: 24px;
   --radius-md: 18px;
   --radius-sm: 12px;
-  --type-display: "Fraunces", Georgia, serif;
+  --type-display: "Space Grotesk", Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --type-body: "Space Grotesk", Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
