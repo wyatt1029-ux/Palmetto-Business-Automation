@@ -626,6 +626,14 @@ a {
   font-size: 1.02rem;
 }
 
+.case-note {
+  margin: 12px 0 0;
+  max-width: 58ch;
+  line-height: 1.6;
+  font-size: 0.95rem;
+  color: rgba(255, 249, 241, 0.68);
+}
+
 .sample-preview {
   padding: 12px;
   border-radius: 30px;
