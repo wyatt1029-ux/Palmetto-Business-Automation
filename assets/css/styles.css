@@ -757,6 +757,37 @@ a {
   min-height: 128px;
 }
 
+.sample-preview-empty .preview-grid-concession {
+  min-height: 360px;
+}
+
+.preview-empty-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.preview-empty-copy {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+  color: rgba(255, 249, 241, 0.82);
+}
+
+.preview-empty-copy strong {
+  display: block;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.preview-empty-copy span {
+  display: block;
+  color: rgba(255, 249, 241, 0.62);
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
 .case-panel p,
 .case-section p,
 .case-value-grid p {
