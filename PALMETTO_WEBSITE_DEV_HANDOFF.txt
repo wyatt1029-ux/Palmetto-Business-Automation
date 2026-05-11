@@ -45,7 +45,7 @@ Bio page nav:
 Current contact setup
 ---------------------
 - Book a Discovery Call button:
-  - https://outlook.office.com/book/BookaDiscoveryCall1@palmettobusinessautomation.com/
+  - https://bookings.cloud.microsoft/book/BookaDiscoveryCall1@palmettobusinessautomation.com/?ismsaljsauthenabled=true
 - Send a Text button:
   - sms:8439000124
 - Text fallback number shown on page:
