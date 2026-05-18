@@ -50,3 +50,9 @@ Static marketing website for Palmetto Business Automation, LLC.
 ## Deployment
 
 Cloudflare Pages is the intended host for this version of the site.
+
+## Load Testing
+
+- k6 scripts live in `k6/`.
+- Run a local server for the site, then execute `k6 run k6/site-smoke.js`.
+- Override the target with `BASE_URL` if you want to test a deployed Pages URL instead of `http://127.0.0.1:8080`.
