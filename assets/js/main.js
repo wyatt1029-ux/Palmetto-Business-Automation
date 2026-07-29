@@ -1,7 +1,7 @@
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const observability = {
-  posthogKey: "",
+  posthogKey: "019f874d-db97-0000-c57f-bd4a2c205abc",
   posthogHost: "https://us.i.posthog.com",
   sentryLoaderUrl: "https://js.sentry-cdn.com/b616f87b26a35459442eb57b47da1a05.min.js",
 };
@@ -24,28 +24,50 @@ if (!isLocalPreview && observability.sentryLoaderUrl) {
 }
 
 if (!isLocalPreview && observability.posthogKey) {
-  loadObservabilityScript(`${observability.posthogHost}/static/array.js`)
-    .then(() => {
-      window.posthog?.init(observability.posthogKey, {
-        api_host: observability.posthogHost,
-        capture_pageview: true,
-        capture_pageleave: true,
-        defaults: "2026-05-30",
-        persistence: "localStorage+cookie",
-      });
+  ((documentRef, posthog) => {
+    if (posthog.__SV) return;
 
-      document.addEventListener("click", (event) => {
-        if (!(event.target instanceof Element)) return;
-        const link = event.target.closest("a");
-        if (!link) return;
+    window.posthog = posthog;
+    posthog._i = [];
+    posthog.init = (token, config, name) => {
+      const script = documentRef.createElement("script");
+      script.type = "text/javascript";
+      script.crossOrigin = "anonymous";
+      script.async = true;
+      script.src = `${config.api_host.replace(".i.posthog.com", "-assets.i.posthog.com")}/static/array.js`;
+      documentRef.head.appendChild(script);
 
-        window.posthog?.capture("site_link_clicked", {
-          label: link.textContent.trim(),
-          destination: link.getAttribute("href") || "",
-        });
+      const instance = name ? (posthog[name] = []) : posthog;
+      const methods =
+        "init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey getNextSurveyStep identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug";
+
+      instance.people = instance.people || [];
+      methods.split(" ").forEach((method) => {
+        instance[method] = (...args) => instance.push([method, ...args]);
       });
-    })
-    .catch(() => {});
+      posthog._i.push([token, config, name]);
+    };
+    posthog.__SV = 1;
+  })(document, window.posthog || []);
+
+  window.posthog.init(observability.posthogKey, {
+    api_host: observability.posthogHost,
+    capture_pageview: true,
+    capture_pageleave: true,
+    defaults: "2026-05-30",
+    persistence: "localStorage+cookie",
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const link = event.target.closest("a");
+    if (!link) return;
+
+    window.posthog.capture("site_link_clicked", {
+      label: link.textContent.trim(),
+      destination: link.getAttribute("href") || "",
+    });
+  });
 }
 
 const revealables = document.querySelectorAll(".reveal");
