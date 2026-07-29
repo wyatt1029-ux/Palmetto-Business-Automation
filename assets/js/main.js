@@ -1,7 +1,7 @@
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const observability = {
-  posthogKey: "",
+  posthogKey: "019f874d-db97-0000-c57f-bd4a2c205abc",
   posthogHost: "https://us.i.posthog.com",
   sentryLoaderUrl: "https://js.sentry-cdn.com/b616f87b26a35459442eb57b47da1a05.min.js",
 };
