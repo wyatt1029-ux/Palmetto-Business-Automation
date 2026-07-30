@@ -1,0 +1,22 @@
+name = "pba-books"
+main = "worker/index.js"
+compatibility_date = "2026-07-30"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[triggers]
+crons = ["15 11 * * *"]
+
+[[r2_buckets]]
+binding = "RECEIPTS"
+bucket_name = "pba-books-receipts"
+preview_bucket_name = "pba-books-receipts-preview"
+
+[vars]
+ENVIRONMENT = "production"
+COMPANY_ID = "00000000-0000-0000-0000-000000000001"
+DEFAULT_CURRENCY = "usd"

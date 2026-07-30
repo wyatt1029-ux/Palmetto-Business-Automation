@@ -1,0 +1,13 @@
+DATABASE_URL=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_ACCOUNT_CUSTOMER_ID=
+POLICY_AUD=
+TEAM_DOMAIN=https://your-team.cloudflareaccess.com
+OWNER_EMAIL=
+PUBLIC_BOOKS_URL=http://localhost:4174
+PUBLIC_SITE_URL=https://palmettobusinessautomation.com
+ENVIRONMENT=development
+DEV_BYPASS_AUTH=true
+DEV_OWNER_EMAIL=owner@example.com
