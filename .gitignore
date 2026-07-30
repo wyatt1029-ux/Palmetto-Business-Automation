@@ -1,1 +1,11 @@
 .wrangler/
+node_modules/
+books/node_modules/
+books/dist/
+dist-site/
+.dev.vars
+.dev.vars.*
+!books/.dev.vars.example
+.env
+.env.*
+!.env.example

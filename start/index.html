@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Start a project with Palmetto Business Automation." />
+    <meta name="theme-color" content="#12352d" />
+    <title>Start a project | Palmetto Business Automation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/project-flow.css" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-one" aria-hidden="true"></div>
+    <div class="backdrop backdrop-two" aria-hidden="true"></div>
+    <div class="page-shell intake-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Back to Palmetto Business Automation">
+          <span class="brand-mark">PBA</span>
+          <span class="brand-copy"><strong>Palmetto Business Automation</strong><span>Project intake</span></span>
+        </a>
+        <a class="text-link" href="/">Back to the website</a>
+      </header>
+
+      <main class="intake-layout">
+        <section class="intake-intro">
+          <p class="eyebrow">Start a project</p>
+          <h1>Let’s give the work a clear shape.</h1>
+          <p>Tell me what is happening today, what needs to improve, and what a useful first version would look like. This takes about 8–10 minutes.</p>
+          <div class="intake-promises"><span>Private by default</span><span>No account required</span><span>Save and revise later</span></div>
+        </section>
+
+        <section class="intake-card" aria-labelledby="form-title">
+          <div class="intake-progress" aria-label="Form progress"><span class="progress-fill" id="progress-fill"></span></div>
+          <div class="step-heading"><p class="panel-label" id="step-label">Step 1 of 5</p><h2 id="form-title">Tell me about you</h2><p id="step-help">A few details so I know who to follow up with.</p></div>
+          <form id="intake-form" novalidate>
+            <div class="form-step is-active" data-step="0">
+              <label>Full name<input name="fullName" required autocomplete="name" /></label>
+              <label>Work email<input name="email" type="email" required autocomplete="email" /></label>
+              <label>Organization<input name="organization" required autocomplete="organization" /></label>
+              <label>Role or relationship to the project<input name="role" required /></label>
+            </div>
+            <div class="form-step" data-step="1">
+              <label>What would you like to improve?<textarea name="problem" required rows="5" placeholder="Describe the operational problem in your own words."></textarea></label>
+              <label>What would success look like?<textarea name="outcomes" required rows="5" placeholder="What should be easier, faster, clearer, or more reliable?"></textarea></label>
+            </div>
+            <div class="form-step" data-step="2">
+              <label>Who will use the system?<textarea name="users" required rows="4" placeholder="Teams, roles, customers, members, or other audiences."></textarea></label>
+              <label>How does the work happen today?<textarea name="currentWorkflow" required rows="5" placeholder="Tools, handoffs, spreadsheets, email, or manual steps."></textarea></label>
+              <label>What tools should this connect to? <span class="optional">Optional</span><input name="integrations" placeholder="For example: Outlook, QuickBooks, HubSpot, Twilio" /></label>
+            </div>
+            <div class="form-step" data-step="3">
+              <label>What should the first version include?<textarea name="features" required rows="5" placeholder="List the capabilities that matter most."></textarea></label>
+              <label>Known constraints or requirements <span class="optional">Optional</span><textarea name="constraints" rows="4" placeholder="Privacy, compliance, mobile use, existing systems, or technical requirements."></textarea></label>
+              <label>Anything else I should understand? <span class="optional">Optional</span><textarea name="context" rows="4"></textarea></label>
+            </div>
+            <div class="form-step" data-step="4">
+              <label>Ideal timing<select name="timeline" required><option value="">Choose one</option><option>Exploring — no fixed date</option><option>Within 1–3 months</option><option>Within 3–6 months</option><option>Specific deadline</option></select></label>
+              <label>Estimated budget range<select name="budget" required><option value="">Choose one</option><option>Not sure yet</option><option>Under $5,000</option><option>$5,000–$15,000</option><option>$15,000–$30,000</option><option>$30,000+</option></select></label>
+              <label>How will the decision be made? <span class="optional">Optional</span><textarea name="decisionProcess" rows="4"></textarea></label>
+              <label class="consent"><input type="checkbox" name="consent" required /> <span>I agree that PBA may use this information to evaluate and follow up about the project.</span></label>
+              <div id="turnstile-container" class="turnstile-container" aria-live="polite"></div>
+              <input class="honey" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            </div>
+            <p class="form-error" id="form-error" role="alert"></p>
+            <div class="form-actions"><button class="button button-secondary" type="button" id="back-button" hidden>Back</button><button class="button button-primary" type="button" id="next-button">Continue</button></div>
+          </form>
+          <div class="intake-success" id="intake-success" hidden><p class="eyebrow">Received</p><h2>Thanks — I have the starting point.</h2><p>Your customer number is <strong id="customer-number"></strong>. It will follow your quote, scope, emails, and payment so you never need to enter a reference manually.</p><p>I’ll review the intake and send your secure revision link by email.</p><a class="button button-secondary" href="/">Return to the site</a></div>
+        </section>
+      </main>
+      <footer class="footer"><p>Palmetto Business Automation LLC</p><p>Information is used only to evaluate and follow up on your project.</p></footer>
+    </div>
+    <script src="/assets/js/site-config.js"></script>
+    <script src="/assets/js/intake.js"></script>
+  </body>
+</html>

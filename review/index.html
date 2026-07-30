@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#12352d" />
+    <title>Project review | Palmetto Business Automation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/project-flow.css" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-one" aria-hidden="true"></div>
+    <div class="backdrop backdrop-two" aria-hidden="true"></div>
+    <div class="page-shell review-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Palmetto Business Automation">
+          <span class="brand-mark">PBA</span>
+          <span class="brand-copy"><strong>Palmetto Business Automation</strong><span>Private project review</span></span>
+        </a>
+        <span class="sow-status">Owner access required</span>
+      </header>
+
+      <main class="review-layout">
+        <aside class="review-queue" aria-label="Project intake queue">
+          <p class="eyebrow">Intake queue</p>
+          <h1>Projects</h1>
+          <div id="review-list" class="review-list"><p>Loading intake records…</p></div>
+        </aside>
+
+        <section class="review-detail" id="review-detail" hidden>
+          <div class="review-heading">
+            <div><p class="eyebrow" id="review-number"></p><h2 id="review-organization"></h2><p id="review-contact"></p></div>
+            <span class="sow-status" id="review-status"></span>
+          </div>
+          <div class="review-answers" id="review-answers"></div>
+
+          <form id="review-form" class="review-form">
+            <label>Status<select name="status"><option>new</option><option>under_review</option><option>needs_clarification</option><option>qualified</option><option>declined</option><option>converted_to_sow</option></select></label>
+            <label>Internal notes<textarea name="internalNotes" rows="5"></textarea></label>
+            <button class="button button-secondary" type="submit">Save review</button>
+          </form>
+
+          <form id="publish-form" class="review-form sow-builder">
+            <p class="eyebrow">Create statement of work</p>
+            <div class="review-fields">
+              <label>Project title<input name="title" required /></label>
+              <label>Client name<input name="clientName" required /></label>
+              <label>Client email<input name="clientEmail" type="email" required /></label>
+              <label>Billing<select name="billingType"><option value="recurring_monthly">Monthly automatic payment</option><option value="one_time">One-time payment</option></select></label>
+              <label>Amount in dollars<input name="amount" type="number" min="0.50" step="0.01" required /></label>
+              <label>Payment label<input name="paymentLabel" value="Monthly service" required /></label>
+              <label>Payment due <span class="optional">Optional</span><input name="paymentDueAt" type="date" /></label>
+            </div>
+            <label>Payment terms<textarea name="paymentTerms" rows="4" required placeholder="Describe billing timing, cancellation, and other agreed payment terms."></textarea></label>
+            <label>Project scope<textarea name="scope" rows="6" required></textarea></label>
+            <label>Deliverables<textarea name="deliverables" rows="6" required></textarea></label>
+            <label>Timeline<textarea name="timelineSection" rows="5" required></textarea></label>
+            <label>Responsibilities and assumptions<textarea name="responsibilities" rows="5" required></textarea></label>
+            <button class="button button-primary" type="submit">Publish and email SOW</button>
+          </form>
+          <p class="form-error" id="review-message" role="status"></p>
+        </section>
+      </main>
+    </div>
+    <script src="/assets/js/review.js"></script>
+  </body>
+</html>

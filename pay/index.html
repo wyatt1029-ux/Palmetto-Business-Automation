@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#12352d" />
+    <title>Secure payment | Palmetto Business Automation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/project-flow.css" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-one" aria-hidden="true"></div>
+    <div class="backdrop backdrop-two" aria-hidden="true"></div>
+    <div class="page-shell payment-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Palmetto Business Automation">
+          <span class="brand-mark">PBA</span>
+          <span class="brand-copy"><strong>Palmetto Business Automation</strong><span>Secure project payment</span></span>
+        </a>
+        <span class="sow-status">Stripe secure checkout</span>
+      </header>
+      <main class="payment-layout">
+        <section class="payment-card" id="payment-card">
+          <p class="eyebrow">Project payment</p>
+          <h1 id="payment-title">Opening your quote…</h1>
+          <p id="payment-copy">Please wait while we securely load your approved project.</p>
+          <dl class="payment-summary" id="payment-summary" hidden>
+            <div><dt>Customer</dt><dd id="payment-customer"></dd></div>
+            <div><dt>Project</dt><dd id="payment-project"></dd></div>
+            <div><dt id="payment-amount-label">Amount due</dt><dd id="payment-amount"></dd></div>
+            <div><dt>Payment schedule</dt><dd id="payment-schedule"></dd></div>
+            <div id="payment-due-row"><dt>Payment setup due</dt><dd id="payment-due"></dd></div>
+          </dl>
+          <div class="payment-terms" id="payment-terms" hidden><strong>Payment terms</strong><p></p></div>
+          <button class="button button-primary payment-button" id="payment-button" type="button" hidden>Set up secure automatic payment</button>
+          <button class="button button-secondary payment-button" id="billing-button" type="button" hidden>Manage automatic payment</button>
+          <div class="payment-trust">
+            <strong>Secure payments processed by Stripe</strong>
+            <p>Pay by major debit or credit card. Apple Pay, Google Pay, and Link may appear when available. Payment details never pass through this website.</p>
+          </div>
+          <p class="form-error" id="payment-error" role="alert"></p>
+        </section>
+      </main>
+      <footer class="footer"><p>Palmetto Business Automation LLC</p><p>Your customer number follows the project automatically.</p></footer>
+    </div>
+    <script src="/assets/js/payment.js"></script>
+  </body>
+</html>

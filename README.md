@@ -1,6 +1,6 @@
 # Palmetto Business Automation
 
-Static marketing website for Palmetto Business Automation, LLC.
+Marketing website and secure project workflow for Palmetto Business Automation, LLC.
 
 ## Stack
 
@@ -17,6 +17,10 @@ Static marketing website for Palmetto Business Automation, LLC.
 - `/who-i-help/`
 - `/about/`
 - `/contact/`
+- `/start/` — guided project intake
+- `/scope/` — private magic-link SOW review and approval
+- `/pay/` — private Stripe payment and autopay setup
+- `/review/` — private owner intake and SOW workspace
 
 ## Project Structure
 
@@ -34,11 +38,14 @@ Static marketing website for Palmetto Business Automation, LLC.
 
 ## Notes
 
-- The site is fully static.
-- No backend, forms, or database are used.
+- Public marketing pages are static and the secure workflow uses Cloudflare Pages Functions.
+- Neon stores intake, SOW, payment, and accounting records.
+- Stripe handles one-time and recurring payments without card data passing through the site.
+- Microsoft Graph sends client and owner notifications.
 - The pages are folder-based so they work cleanly on Cloudflare Pages.
 - `_redirects` keeps the URLs tidy.
-- `_headers` adds basic security headers.
+- `_headers` adds a restrictive browser-security baseline.
+- `npm run build:site` creates an explicit allowlisted deployment bundle.
 
 ## Editing
 

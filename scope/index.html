@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#12352d" />
+    <title>Review project scope | Palmetto Business Automation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/assets/css/project-flow.css" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-one" aria-hidden="true"></div>
+    <div class="backdrop backdrop-two" aria-hidden="true"></div>
+    <div class="page-shell sow-shell">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Palmetto Business Automation">
+          <span class="brand-mark">PBA</span>
+          <span class="brand-copy"><strong>Palmetto Business Automation</strong><span>Scope review</span></span>
+        </a>
+        <span class="sow-status" id="sow-status">Loading scope…</span>
+      </header>
+
+      <main class="sow-layout">
+        <section class="sow-document" id="sow-document" hidden>
+          <div class="sow-title">
+            <div><p class="eyebrow">Statement of work</p><h1 id="sow-title"></h1></div>
+            <div class="sow-meta"><strong id="sow-customer-number"></strong><span id="sow-version"></span><span id="sow-client"></span></div>
+          </div>
+          <div class="sow-sections" id="sow-sections"></div>
+        </section>
+
+        <aside class="sow-decision" id="sow-decision" hidden>
+          <p class="eyebrow">Your decision</p>
+          <h2>Ready to move forward?</h2>
+          <p>Approval confirms that this version accurately describes the agreed project scope. It does not process payment.</p>
+          <form id="approval-form">
+            <label>Your full name<input name="signerName" required autocomplete="name" /></label>
+            <label class="consent"><input type="checkbox" name="confirmation" required /><span>I have reviewed this SOW and am authorized to approve it.</span></label>
+            <label class="consent" id="autopay-consent" hidden><input type="checkbox" name="autopayConfirmation" disabled /><span>I understand that the agreed monthly amount will be charged automatically until canceled under the approved agreement.</span></label>
+            <button class="button button-primary sow-action" type="submit">Approve this scope</button>
+          </form>
+          <div class="decision-divider"><span>or</span></div>
+          <form id="changes-form">
+            <label>What should change?<textarea name="notes" required rows="5" placeholder="Describe the sections or details you would like revised."></textarea></label>
+            <button class="button button-secondary sow-action" type="submit">Request changes</button>
+          </form>
+          <p class="form-error" id="sow-error" role="alert"></p>
+          <div class="payment-trust"><strong>Secure payments processed by Stripe</strong><p>Eligible card and wallet options are shown securely after approval.</p></div>
+        </aside>
+
+        <section class="intake-card sow-message" id="sow-message">
+          <p class="eyebrow">Secure scope review</p>
+          <h1 id="message-title">Opening your SOW…</h1>
+          <p id="message-copy">Please wait while the approved version is loaded.</p>
+          <div id="message-actions"></div>
+        </section>
+      </main>
+      <footer class="footer"><p>Palmetto Business Automation LLC</p><p>This secure link is intended only for the named client.</p></footer>
+    </div>
+    <script src="/assets/js/sow.js"></script>
+  </body>
+</html>
