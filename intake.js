@@ -11,7 +11,6 @@
   const help = document.querySelector("#step-help");
   const success = document.querySelector("#intake-success");
   const turnstileContainer = document.querySelector("#turnstile-container");
-  const config = window.PBA_OBSERVABILITY || {};
   const headings = [
     ["Tell me about you", "A few details so I know who to follow up with."],
     ["Define the opportunity", "What needs to change, and why does it matter?"],
@@ -23,8 +22,15 @@
   let turnstileToken = "";
   let turnstileWidgetId = null;
 
-  const initializeTurnstile = () => {
-    if (!config.turnstileSiteKey) {
+  const initializeTurnstile = async () => {
+    let siteKey = "";
+    try {
+      const response = await fetch("/api/public-config", { headers: { accept: "application/json" } });
+      if (response.ok) siteKey = (await response.json()).turnstileSiteKey || "";
+    } catch {
+      // The message below keeps the form usable and explains what is missing.
+    }
+    if (!siteKey) {
       turnstileContainer.textContent = "Security verification is not configured.";
       return;
     }
@@ -34,7 +40,7 @@
     script.defer = true;
     script.onload = () => {
       turnstileWidgetId = window.turnstile.render(turnstileContainer, {
-        sitekey: config.turnstileSiteKey,
+        sitekey: siteKey,
         callback: (token) => { turnstileToken = token; },
         "expired-callback": () => { turnstileToken = ""; },
         "error-callback": () => { turnstileToken = ""; },
