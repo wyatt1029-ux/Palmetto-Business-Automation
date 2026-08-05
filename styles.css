@@ -1065,6 +1065,8 @@ img {
 .payment-terms, .payment-trust { margin: 22px 0; padding: 18px; border-radius: 15px; background: #edf3ee; }
 .payment-terms p, .payment-trust p { margin: 7px 0 0; color: var(--muted); font-size: .88rem; line-height: 1.55; }
 .payment-trust { border: 1px solid #d6e2d8; background: rgba(255,255,255,.65); }
+.payment-trust strong { display: flex; align-items: center; gap: 8px; }
+.trust-icon { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .payment-button + .payment-button { margin-top: 12px; }
 #message-actions { margin-top: 24px; }
 @media (max-width: 600px) { .payment-card { padding: 26px; } .payment-summary div { display: grid; gap: 5px; } .payment-summary dd { text-align: left; } }

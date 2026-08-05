@@ -1,6 +1,7 @@
 name = "pba-books"
 main = "worker/index.js"
 compatibility_date = "2026-07-30"
+routes = [{ pattern = "books.palmettobusinessautomation.com", custom_domain = true }]
 
 [assets]
 directory = "./dist"
@@ -20,3 +21,7 @@ preview_bucket_name = "pba-books-receipts-preview"
 ENVIRONMENT = "production"
 COMPANY_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_CURRENCY = "usd"
+PUBLIC_BOOKS_URL = "https://books.palmettobusinessautomation.com"
+PUBLIC_SITE_URL = "https://palmettobusinessautomation.com"
+OWNER_EMAIL = "rosswyatt@palmettobusinessautomation.com"
+STRIPE_PUBLISHABLE_KEY = "pk_test_51Tz2RYH1zz06h42pp0dEf6XX7yAzjxl9XfYfPmsOFCR1ivz4kahI9gvPtNs4jOtXIIvJusDlPo7zoBo5im83GyHt00hXh9PxX8"

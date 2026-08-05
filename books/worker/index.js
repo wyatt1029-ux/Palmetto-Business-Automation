@@ -1037,6 +1037,26 @@ async function api(request, env, actor) {
   if (path === "/api/customers/sync" && method === "POST") {
     return json({ synced: await syncApprovedCustomers(sql, env, actor.email) });
   }
+  if (path === "/api/customers" && method === "POST") {
+    const data = await bodyJson(request);
+    const name = requiredText(data.name, "Customer name", 200);
+    const email = requiredText(data.email, "Customer email", 320).toLowerCase();
+    const organization = data.organization ? requiredText(data.organization, "Organization", 200) : null;
+    const phone = data.phone ? requiredText(data.phone, "Phone", 60) : null;
+    const rows = await sql`
+      insert into accounting_customers
+        (company_id, customer_number, name, organization, email, phone)
+      values
+        (${companyId(env)},
+         'PBA-' || to_char(current_date, 'YYYY') || '-' || lpad(nextval('pba_customer_number_seq')::text, 6, '0'),
+         ${name}, ${organization}, ${email}, ${phone})
+      returning id, customer_number, name, organization, email, phone, active
+    `;
+    await writeAudit(sql, env, actor.email, "customer.create", "customer", rows[0].id, {
+      customerNumber: rows[0].customer_number,
+    });
+    return json({ customer: rows[0] }, 201);
+  }
   if (path === "/api/vendors" && method === "GET") {
     return json({ vendors: await sql`
       select id, name, email, phone, notes, active

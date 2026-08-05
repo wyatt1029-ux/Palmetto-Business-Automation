@@ -352,6 +352,7 @@ function Sales({ customers, reloadCustomers }) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState("");
 
   const createInvoice = async (event) => {
     event.preventDefault(); setWorking(true); setError("");
@@ -372,12 +373,27 @@ function Sales({ customers, reloadCustomers }) {
     finally { setWorking(false); }
   };
 
+  const addCustomer = async (event) => {
+    event.preventDefault(); setWorking(true); setError("");
+    try {
+      const form = new FormData(event.currentTarget);
+      const result = await api("/api/customers", {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(form)),
+      });
+      await reloadCustomers();
+      setModal("");
+      setNotice(`Customer ${result.customer.customer_number} added.`);
+    } catch (requestError) { setError(requestError.message); }
+    finally { setWorking(false); }
+  };
+
   const collect = async (invoice) => {
     setWorking(true); setError("");
     try {
       const result = await api(`/api/invoices/${invoice.id}/collect`, { method: "POST" });
-      await navigator.clipboard.writeText(result.checkoutUrl);
-      setNotice("Secure Stripe payment link copied to the clipboard.");
+      setCheckoutUrl(result.checkoutUrl);
+      setModal("payment-link");
     } catch (requestError) { setError(requestError.message); }
     finally { setWorking(false); }
   };
@@ -395,6 +411,7 @@ function Sales({ customers, reloadCustomers }) {
             catch (requestError) { setError(requestError.message); }
             finally { setWorking(false); }
           }}>Sync approved SOWs</button>
+          <button className="button button-secondary" onClick={() => setModal("customer")}>Add customer</button>
           <button className="button button-primary" onClick={() => setModal("invoice")}>New invoice</button>
         </>}
       />
@@ -421,6 +438,26 @@ function Sales({ customers, reloadCustomers }) {
           </div>
         ) : <Empty title="No invoices yet" copy="Sync an approved SOW or create your first customer invoice." action={<button className="button button-primary" onClick={() => setModal("invoice")}>Create invoice</button>} />}
       </section>
+      <Modal open={modal === "customer"} title="Add a customer" copy="Use this for clients who did not begin with the online intake and SOW workflow." onClose={() => setModal("")}>
+        <Notice message={error} tone="error" onClose={() => setError("")} />
+        <form className="form-grid" onSubmit={addCustomer}>
+          <label className="full"><span>Customer name</span><input name="name" required /></label>
+          <label className="full"><span>Organization</span><input name="organization" /></label>
+          <label><span>Email</span><input name="email" type="email" required /></label>
+          <label><span>Phone</span><input name="phone" type="tel" /></label>
+          <button className="button button-primary full" disabled={working}>{working ? "Adding…" : "Add customer"}</button>
+        </form>
+      </Modal>
+      <Modal open={modal === "payment-link"} title="Stripe payment link" copy="Send this secure checkout link to the customer, or open it now to verify the payment experience." onClose={() => setModal("")}>
+        <div className="form-grid">
+          <label className="full"><span>Secure checkout URL</span><input value={checkoutUrl} readOnly /></label>
+          <button className="button button-secondary" type="button" onClick={async () => {
+            await navigator.clipboard.writeText(checkoutUrl);
+            setNotice("Secure Stripe payment link copied to the clipboard.");
+          }}>Copy link</button>
+          <a className="button button-primary" href={checkoutUrl} target="_blank" rel="noreferrer">Open Stripe checkout</a>
+        </div>
+      </Modal>
       <Modal open={modal === "invoice"} title="Create an invoice" copy="The invoice posts to accounts receivable immediately. Stripe handles collection and monthly autopay." onClose={() => setModal("")}>
         <Notice message={error} tone="error" onClose={() => setError("")} />
         <form className="form-grid" onSubmit={createInvoice}>

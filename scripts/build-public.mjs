@@ -9,13 +9,16 @@ const files = [
   "intake.html",
   "sow.html",
   "payment.html",
+  "sow-builder.html",
   "styles.css",
+  "sow-builder.css",
   "script.js",
   "site-config.js",
   "observability.js",
   "intake.js",
   "sow.js",
   "payment.js",
+  "sow-builder.js",
 ];
 
 await rm(output, { recursive: true, force: true });

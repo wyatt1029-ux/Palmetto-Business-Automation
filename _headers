@@ -20,5 +20,8 @@
 /intake.html
   Cache-Control: private, no-store
 
+/sow-builder.html
+  Cache-Control: private, no-store
+
 /api/*
   Cache-Control: private, no-store
