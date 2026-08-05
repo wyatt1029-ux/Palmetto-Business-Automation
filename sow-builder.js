@@ -74,7 +74,7 @@
     paymentHeading.textContent = "Payment schedule";
     const paymentBody = document.createElement("p");
     const recurring = byName("billingType").value === "recurring_monthly";
-    paymentBody.textContent = `${byName("paymentLabel").value || "Payment"}: ${money(Number(byName("amount").value || 0) * 100)}${recurring ? " per month, billed automatically until canceled under the agreement" : ""}.`;
+    paymentBody.textContent = `${byName("paymentLabel").value || "Payment"}: ${money(Number(byName("amount").value || 0))}${recurring ? " per month, billed automatically until canceled under the agreement" : ""}.`;
     payment.append(paymentHeading, paymentBody);
     previewSections.appendChild(payment);
   };
