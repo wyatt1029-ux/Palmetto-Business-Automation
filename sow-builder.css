@@ -15,7 +15,7 @@
 .two-column label:last-child { grid-column:1 / -1; }
 .field-help { color:#62756d; font-size:.9rem; margin-top:-4px; }
 .scope-sections { display:grid; gap:14px; margin-bottom:14px; }
-.scope-section { display:grid; grid-template-columns:minmax(150px,.35fr) minmax(0,1fr) auto; gap:12px; align-items:start; padding:14px; border:1px solid #dbe7e1; background:#f8fbf9; border-radius:14px; }
+.scope-section { display:grid; grid-template-columns:minmax(190px,.8fr) minmax(0,1fr) auto; gap:12px; align-items:start; padding:14px; border:1px solid #dbe7e1; background:#f8fbf9; border-radius:14px; }
 .scope-section .remove-section { margin-top:34px; }
 .mini-button { border:0; background:transparent; color:#24704f; font:inherit; font-weight:700; cursor:pointer; padding:8px 4px; }
 .builder-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:28px; }

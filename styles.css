@@ -364,9 +364,7 @@ img {
   padding: 34px;
   border: 1px solid var(--line);
   border-radius: var(--radius-xl);
-  background:
-    linear-gradient(135deg, rgba(18, 53, 45, 0.97), rgba(21, 106, 88, 0.92)),
-    var(--green);
+  background: linear-gradient(135deg, #12352d 0%, #156a58 100%);
   box-shadow: var(--shadow);
 }
 

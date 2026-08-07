@@ -54,6 +54,15 @@
     body: row.querySelector('[name="sectionBody"]').value.trim(),
   }));
 
+  const prefillSection = (title, body) => {
+    if (!body) return;
+    const row = [...sections.querySelectorAll(".scope-section")].find((section) =>
+      section.querySelector('[name="sectionTitle"]').value.trim().toLowerCase() === title.toLowerCase(),
+    );
+    const details = row?.querySelector('[name="sectionBody"]');
+    if (details && !details.value.trim()) details.value = body;
+  };
+
   const refreshPreview = () => {
     const selected = intakes.find((item) => item.id === intakeSelect.value);
     document.querySelector("#preview-title").textContent = byName("title").value || "Your project title";
@@ -85,6 +94,8 @@
     byName("clientName").value = selected.full_name || "";
     byName("clientEmail").value = selected.email || "";
     if (!byName("title").value) byName("title").value = `${selected.organization || selected.full_name} project scope`;
+    prefillSection("Business problem", selected.problem);
+    prefillSection("Desired outcomes", selected.outcomes);
     intakeSummary.innerHTML = `<strong>${esc(selected.customer_number)} · ${esc(selected.organization)}</strong><br>${esc(selected.email)}<br><span>${esc(selected.problem || "No problem statement provided.")}</span>`;
     intakeSummary.hidden = false;
     refreshPreview();
