@@ -5,238 +5,475 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Palmetto Business Automation helps small businesses reduce repetitive work with automation, reporting, dashboards, custom web apps, and AI solutions."
+      content="Palmetto Business Automation designs, builds, deploys, and hosts websites and custom client systems, workflow automation, reporting, and AI solutions."
     />
     <meta name="theme-color" content="#12352d" />
-    <title>Palmetto Business Automation</title>
+    <title>Client Systems | Palmetto Business Automation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/assets/css/styles.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="backdrop backdrop-one" aria-hidden="true"></div>
     <div class="backdrop backdrop-two" aria-hidden="true"></div>
 
-    <div class="page-shell" id="top">
+    <div class="page-shell">
       <header class="topbar">
-        <a class="brand" href="#top" aria-label="Palmetto Business Automation home">
+        <a class="brand" href="#top" aria-label="Palmetto Business Automation client systems">
+          <span class="brand-mark">PBA</span>
           <span class="brand-copy">
             <strong>Palmetto Business Automation</strong>
-            <span>Automation • Reporting • AI Solutions</span>
+            <span>Websites • client systems • workflow automation • AI solutions</span>
           </span>
         </a>
 
-        <nav class="topnav" aria-label="Primary">
-          <a href="/">Home</a>
-          <a href="/services/">Services</a>
-          <a href="/example-builds/">Example Builds</a>
-          <a href="/who-i-help/">Who I Help</a>
-          <a href="/about/">About</a>
-          <a href="/contact/">Contact</a>
+        <nav class="topnav" aria-label="Section navigation">
+          <a href="#services">Services</a>
+          <a href="#church">Church Hub</a>
+          <a href="#coastal">Coastal Boat Ops</a>
+          <a href="#ai">AI Matching</a>
         </nav>
-
-        <a
-          class="topbar-cta"
-          href="https://bookings.cloud.microsoft/bookwithme/user/b07a2bd487a244de879107041fd6e376%40palmettobusinessautomation.com?anonymous&ismsaljsauthenabled"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Book a Discovery Call
-        </a>
       </header>
 
-      <main>
+      <main id="top">
         <section class="hero">
-          <div class="hero-logo reveal" aria-hidden="true">
-            <img src="/assets/images/logo.png" alt="" />
-          </div>
-
-          <div class="hero-copy reveal">
-            <p class="eyebrow">Automation • Reporting • AI Solutions</p>
-            <h1>Palmetto Business Automation</h1>
+          <div class="hero-copy">
+            <p class="eyebrow">Websites and client systems</p>
+            <h1>From a polished website to the system running behind it.</h1>
             <p class="hero-text">
-              Helping small businesses reduce repetitive work and operate more efficiently through automation, reporting, dashboards, and AI solutions.
+              I design, build, deploy, and host business websites alongside the custom workflows,
+              integrations, and automation that help your team operate.
             </p>
-
             <div class="hero-actions">
-              <a
-                class="button button-primary"
-                href="https://bookings.cloud.microsoft/bookwithme/user/b07a2bd487a244de879107041fd6e376%40palmettobusinessautomation.com?anonymous&ismsaljsauthenabled"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Book a Discovery Call
-              </a>
-              <a class="button button-secondary" href="/services/">View Services</a>
+              <a class="button button-primary" href="#services">Explore services</a>
+              <a class="button button-secondary" href="#church">View the builds</a>
+              <a class="button button-secondary" href="intake.html">Start a project</a>
             </div>
-            <p class="tiny-note">Or text <a href="sms:8439000124">843-900-0124</a> directly if your app does not open.</p>
 
-            <p class="hero-note">Practical support built for real business results.</p>
-
-            <ul class="hero-notes" aria-label="Highlights">
-              <li>Service-area business</li>
-              <li>Available for in-person or virtual meetings</li>
-              <li>Practical, outcome-driven support</li>
-            </ul>
+            <div class="hero-metrics" aria-label="Build summary">
+              <div>
+                <strong>End to end</strong>
+                <span>Design, build, launch, and hosting</span>
+              </div>
+              <div>
+                <strong>Custom fit</strong>
+                <span>Built around your business and customers</span>
+              </div>
+              <div>
+                <strong>One partner</strong>
+                <span>Website, integrations, and ongoing support</span>
+              </div>
+            </div>
           </div>
 
-          <div class="hero-visual reveal">
-            <div class="stage">
-              <article class="stage-frame fix-card">
-                <p class="fix-kicker">How I help</p>
-                <h2>Practical Automation<br />for Real Business Results</h2>
-                <p class="fix-lede">
-                  I help organizations reduce repetitive work, streamline reporting, and build better workflows.
+          <aside class="hero-aside">
+            <div class="hero-panel">
+              <p class="panel-label">Build lineup</p>
+              <div class="panel-list">
+                <article>
+                  <span>01</span>
+                  <div>
+                    <strong>Church Hub Application OneThread</strong>
+                    <p>Community, care, events, giving, volunteers, and private member workflows.</p>
+                  </div>
+                </article>
+                <article>
+                  <span>02</span>
+                  <div>
+                    <strong>Coastal Boat Operations Portal</strong>
+                    <p>Coastal service operations with customer CRM, vessel records, and field dispatch.</p>
+                  </div>
+                </article>
+                <article>
+                  <span>03</span>
+                  <div>
+                    <strong>AI Research Matcher</strong>
+                    <p>Company discovery, scoring, and fit analysis for business outreach.</p>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="services-section" id="services" aria-labelledby="services-title">
+          <div class="services-heading">
+            <div>
+              <p class="eyebrow">Website services</p>
+              <h2 id="services-title">A complete website service, from first idea to ongoing care.</h2>
+            </div>
+            <p>
+              PBA can own the full website lifecycle, so you have one accountable partner for the
+              look, the technology, the launch, and what happens after it goes live.
+            </p>
+          </div>
+
+          <div class="service-grid">
+            <article class="service-card">
+              <span class="service-number">01</span>
+              <div>
+                <p class="panel-label">Design</p>
+                <h3>A clear, credible customer experience.</h3>
+                <p>
+                  Page structure, content direction, responsive layouts, and a visual system shaped
+                  around your brand and the actions you want visitors to take.
                 </p>
+              </div>
+            </article>
 
-                <div class="fix-list">
-                  <div class="fix-item">
-                    <span class="fix-step">1</span>
-                    <div>
-                      <strong>Improve reporting</strong>
-                      <p>Dashboards, summaries, cleanup</p>
-                    </div>
-                  </div>
+            <article class="service-card">
+              <span class="service-number">02</span>
+              <div>
+                <p class="panel-label">Build</p>
+                <h3>Fast pages with useful business connections.</h3>
+                <p>
+                  Accessible, mobile-ready development with forms, scheduling, payments, CRM,
+                  analytics, automation, and other integrations when the project needs them.
+                </p>
+              </div>
+            </article>
 
-                  <div class="fix-item">
-                    <span class="fix-step">2</span>
-                    <div>
-                      <strong>Automate repeat work</strong>
-                      <p>Power Automate, Python, AI</p>
-                    </div>
-                  </div>
+            <article class="service-card">
+              <span class="service-number">03</span>
+              <div>
+                <p class="panel-label">Deploy</p>
+                <h3>A careful launch without the technical scramble.</h3>
+                <p>
+                  Domain and DNS setup, SSL, redirects, search essentials, analytics, and launch
+                  checks handled as part of a planned move into production.
+                </p>
+              </div>
+            </article>
 
-                  <div class="fix-item">
-                    <span class="fix-step">3</span>
-                    <div>
-                      <strong>Build usable systems</strong>
-                      <p>Portals, intake forms, workflow tools</p>
-                    </div>
-                  </div>
-                </div>
+            <article class="service-card">
+              <span class="service-number">04</span>
+              <div>
+                <p class="panel-label">Host + support</p>
+                <h3>Secure Cloudflare hosting and ongoing care.</h3>
+                <p>
+                  Managed hosting, performance and uptime monitoring, security configuration,
+                  routine updates, and a dependable path for future changes.
+                </p>
+              </div>
+            </article>
+          </div>
 
-                <div class="fix-result">
-                  <span>Result</span>
-                  <p>Fewer manual steps, clearer numbers, and a simpler way to run work across your team.</p>
-                </div>
-              </article>
+          <div class="services-cta">
+            <div>
+              <p class="panel-label">One connected process</p>
+              <strong>Your intake, approved scope, customer number, and monthly payment can stay together from kickoff onward.</strong>
+            </div>
+            <a class="button button-primary" href="intake.html">Plan my website</a>
+          </div>
+        </section>
+
+        <section class="section section-intro">
+          <div class="section-heading">
+            <p class="eyebrow">Selected client systems</p>
+            <h2>Real-world systems built around real client operations.</h2>
+            <p>
+              Each system reflects a real operational need, with the workflows, interface detail, and
+              business outcomes designed for the teams that use it every day.
+            </p>
+          </div>
+        </section>
+
+        <section class="case-study" id="church">
+          <div class="case-hero">
+            <div>
+              <p class="eyebrow">Church community operations</p>
+              <h2>Church Hub Application OneThread</h2>
+              <p class="case-summary">
+                A unified church community application for member connection, pastoral care, events,
+                giving, volunteer coordination, attendance, prayer, Twilio-powered text communications,
+                and privacy-aware profiles. An Apple App Store companion app is currently in development.
+              </p>
+              <div class="tag-row">
+                <span>real screenshots</span>
+                <span>community care</span>
+                <span>events + volunteers</span>
+                <span>attendance + giving</span>
+                <span>Twilio text messaging</span>
+                <span>Apple App Store app in progress</span>
+              </div>
+            </div>
+
+            <div class="case-note">
+              <p class="panel-label">Workflow scope</p>
+              <p>
+                A connected workspace for the entire church community, from Sunday follow-up and
+                Twilio text outreach to service coordination, year-round care, and a companion iOS app in progress.
+              </p>
+            </div>
+          </div>
+
+          <div class="gallery gallery-real">
+            <figure class="shot shot-tall">
+              <img
+                src="assets/church-demo-glow.png"
+                alt="Live Church Hub Application OneThread assistant interface"
+              />
+              <figcaption>Live Woven assistant for church staff follow-up</figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/church-demo-dashboard.png"
+                alt="Live Church Hub Application OneThread command center interface"
+              />
+              <figcaption>Live command center for care, attendance, and volunteers</figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="assets/church-demo-live.png"
+                alt="Live Church Hub Application OneThread preview hub"
+              />
+              <figcaption>Application hub with five client-ready interaction styles</figcaption>
+            </figure>
+          </div>
+
+          <div class="feature-strip">
+            <div>
+              <strong>Why it works</strong>
+              <p>It brings fragmented church operations into one connected community workspace.</p>
+            </div>
+            <div>
+              <strong>Who it suits</strong>
+              <p>Churches that need a better member experience and practical staff operations.</p>
+            </div>
+            <div>
+              <strong>Community value</strong>
+              <p>One platform story that is clear for leadership, staff, and the wider community.</p>
             </div>
           </div>
         </section>
 
-        <section class="content-section reveal">
-          <div class="section-heading">
-            <p class="eyebrow">Who I Help</p>
-            <h2>I help organizations that spend too much time manually moving data, updating spreadsheets, managing repetitive processes, or working across disconnected systems.</h2>
-          </div>
-        </section>
+        <section class="case-study" id="coastal">
+          <div class="case-hero">
+            <div>
+              <p class="eyebrow">Marine service operations</p>
+              <h2>Coastal Boat Operations Portal</h2>
+              <p class="case-summary">
+                A client-ready marine operations platform that combines customer CRM, vessel records,
+                service requests, dispatch, asset tracking, and reporting for field teams.
+              </p>
+              <div class="tag-row">
+                <span>client-safe presentation</span>
+                <span>customer CRM</span>
+                <span>field dispatch</span>
+                <span>inventory tracking</span>
+                <span>route planning</span>
+              </div>
+            </div>
 
-        <section id="services" class="content-section reveal">
-          <div class="section-heading">
-            <p class="eyebrow">Services</p>
-            <h2>Practical automation work that helps teams move faster.</h2>
-            <p>
-              Small businesses do not need a giant software build to make a real improvement. They usually need cleaner reporting, fewer manual steps, and a few dependable tools that fit the way the business already works.
-            </p>
-          </div>
-
-          <div class="example-grid">
-            <article class="example-card">
-              <p class="card-label">Reporting & Data Automation</p>
-              <h3>Cleaner reporting</h3>
-              <p>Turn scattered data and recurring reports into reliable, easy-to-review output.</p>
-            </article>
-
-            <article class="example-card">
-              <p class="card-label">Business Dashboards</p>
-              <h3>Simple reporting views</h3>
-              <p>Give owners and managers a clear view of the numbers that matter.</p>
-            </article>
-
-            <article class="example-card">
-              <p class="card-label">Custom Web Apps & Portals</p>
-              <h3>Client-friendly tools</h3>
-              <p>Replace email chains and ad hoc spreadsheets with clean portals and workflow pages.</p>
-            </article>
-
-            <article class="example-card">
-              <p class="card-label">Microsoft Power Automate</p>
-              <h3>Workflow automation</h3>
-              <p>Automate approvals, reminders, file moves, and repeat tasks across Microsoft 365.</p>
-            </article>
-
-            <article class="example-card">
-              <p class="card-label">Python Scripting</p>
-              <h3>Custom automation logic</h3>
-              <p>Use Python behind the scenes to clean data, connect systems, and support repeatable workflows.</p>
-            </article>
-
-            <article class="example-card">
-              <p class="card-label">AI Prompt Engineering</p>
-              <h3>Practical AI support</h3>
-              <p>Create reusable prompts and AI workflows that help with drafting, summarizing, and organizing work.</p>
-            </article>
-
-            <article class="example-card">
-              <p class="card-label">ETL & Data Integration</p>
-              <h3>Connected systems</h3>
-              <p>Move data between tools, normalize formats, and create a dependable path from source systems to reports.</p>
-            </article>
-          </div>
-
-          <div class="hero-actions">
-            <a class="button button-primary" href="/services/">View Services</a>
-          </div>
-        </section>
-
-        <section class="content-section reveal">
-          <div class="section-heading">
-            <p class="eyebrow">What I Build</p>
-            <h2>Real Solutions I’m Building</h2>
-            <p>Examples include church directory apps, business dashboards, reporting tools, workflow automations, client portals, and booking or intake systems.</p>
-          </div>
-          <div class="tag-list">
-            <span>Church directory apps</span>
-            <span>Business dashboards</span>
-            <span>Reporting tools</span>
-            <span>Workflow automations</span>
-            <span>Client portals</span>
-            <span>Booking and intake systems</span>
-          </div>
-          <p class="tiny-note">Built with modern cloud technologies including Microsoft 365, Power Automate, Python, Supabase, and AI-assisted workflows.</p>
-        </section>
-
-        <section class="content-section reveal">
-          <div class="cta-panel">
-            <h2>Need a small system to feel a lot simpler?</h2>
-            <p>
-              I can help you clean up the spreadsheet mess, automate the repeat steps, and build a better view of what is going on.
-            </p>
-            <div class="hero-actions">
-              <a
-                class="button button-primary"
-                href="https://bookings.cloud.microsoft/bookwithme/user/b07a2bd487a244de879107041fd6e376%40palmettobusinessautomation.com?anonymous&ismsaljsauthenabled"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Book a Discovery Call
-              </a>
-              <a class="button button-secondary" href="/contact/">View Contact Options</a>
+            <div class="case-note">
+              <p class="panel-label">Workflow coverage</p>
+              <p>
+                Customer and vessel records connect directly to service requests, project tracking,
+                dispatch, and field support.
+              </p>
             </div>
           </div>
+
+          <div class="gallery gallery-mock">
+            <figure class="shot shot-coastal">
+              <div class="mock-screen mock-dashboard">
+                <div class="mock-topline">
+                  <span>Operations Overview</span>
+                  <span>Live · 14 sites</span>
+                </div>
+                <div class="metric-grid">
+                  <div><strong>28</strong><span>Open jobs</span></div>
+                  <div><strong>94%</strong><span>On-time runs</span></div>
+                  <div><strong>6</strong><span>Pending checks</span></div>
+                  <div><strong>3</strong><span>Weather alerts</span></div>
+                </div>
+                <div class="chart-area">
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+              <figcaption>Live source screen: marine services, projects, and support workflow</figcaption>
+            </figure>
+
+            <figure class="shot shot-coastal">
+              <div class="mock-screen mock-schedule">
+                <div class="mock-topline">
+                  <span>Route Planner</span>
+                  <span>Updated 8 min ago</span>
+                </div>
+                <div class="route-list">
+                  <article>
+                    <strong>Harbor north loop</strong>
+                    <span>Check-in due 09:20</span>
+                  </article>
+                  <article>
+                    <strong>Dock support run</strong>
+                    <span>Equipment pickup and handoff</span>
+                  </article>
+                  <article>
+                    <strong>Offshore maintenance</strong>
+                    <span>Weather window review</span>
+                  </article>
+                </div>
+              </div>
+              <figcaption>Live source screen: premium boat services and equipment support</figcaption>
+            </figure>
+
+            <figure class="shot shot-coastal shot-coastal-workflow">
+              <div class="coastal-workflow">
+                <div class="workflow-topline"><span>Service request</span><b>In review</b></div>
+                <h3>Helm display + radar upgrade</h3>
+                <p>42' center console / Charleston Harbor</p>
+                <div class="workflow-steps">
+                  <div class="is-complete"><span>1</span><strong>Request received</strong><small>Photos and vessel details attached</small></div>
+                  <div class="is-active"><span>2</span><strong>Scope review</strong><small>Technician confirming equipment fit</small></div>
+                  <div><span>3</span><strong>Schedule service</strong><small>Choose the next available dock visit</small></div>
+                </div>
+              </div>
+              <figcaption>Service request workflow from vessel details to scheduled work</figcaption>
+            </figure>
+          </div>
+
+          <div class="feature-strip feature-strip-dark">
+            <div>
+              <strong>Why it works</strong>
+              <p>A real client-ready workflow that keeps customer relationships, vessel history, and service work connected.</p>
+            </div>
+            <div>
+              <strong>Who it suits</strong>
+              <p>Marine service teams that need customer CRM, vessel records, dispatch, and field operations in one system.</p>
+            </div>
+            <div>
+              <strong>Operational value</strong>
+              <p>A credible, client-ready CRM and operations system for service requests, vessel records, and ongoing support.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="case-study" id="ai">
+          <div class="case-hero">
+            <div>
+              <p class="eyebrow">AI research + business matching</p>
+              <h2>AI Research Matcher</h2>
+              <p class="case-summary">
+                A discovery workflow that turns fast-moving AI research into practical tool matches for
+                individual businesses, based on their needs, fit signals, and highest-value next steps.
+              </p>
+              <div class="tag-row">
+                <span>research briefs</span>
+                <span>fit scoring</span>
+                <span>outreach queue</span>
+                <span>business matching</span>
+              </div>
+            </div>
+
+            <div class="case-note">
+              <p class="panel-label">Business value</p>
+              <p>
+                A practical AI automation system for research, business matching, and lead qualification.
+              </p>
+            </div>
+          </div>
+
+          <div class="gallery gallery-mock gallery-ai">
+            <figure class="shot shot-ai shot-ai-live">
+              <img
+                src="assets/ai-dashboard-live.png"
+                alt="Live AI Research TLDR dashboard with research categories and search controls"
+              />
+              <figcaption>
+                AI moves fast. This research layer filters the signal, then connects each business's
+                "who they are" and "why they fit" profile to the right tools and workflows, so teams
+                spend less time chasing AI trends and more time adopting what they actually need.
+              </figcaption>
+            </figure>
+            <figure class="shot shot-ai">
+              <div class="mock-screen mock-ai-detail">
+                <div class="mock-topline">
+                  <span>Decision support</span>
+                  <span>Business-first AI</span>
+                </div>
+                <div class="brief-cards ai-detail-cards">
+                  <article>
+                    <strong>Why it works</strong>
+                    <p>Turns fast-moving AI research into clear options, summaries, and next steps.</p>
+                  </article>
+                  <article>
+                    <strong>Who it suits</strong>
+                    <p>Businesses that need practical AI choices tied to their real workflows.</p>
+                  </article>
+                  <article>
+                    <strong>What it prevents</strong>
+                    <p>Wasted time and budget on tools that do not solve the business's actual needs.</p>
+                  </article>
+                </div>
+              </div>
+              <figcaption>Business-first guidance for choosing the AI tools worth adopting</figcaption>
+            </figure>
+
+            <figure class="shot shot-ai">
+              <div class="mock-screen mock-brief">
+                <div class="mock-topline">
+                  <span>Research brief</span>
+                  <span>Generated summary</span>
+                </div>
+                <div class="brief-cards">
+                  <article>
+                    <strong>Who they are</strong>
+                    <p>Small team, high activity, visible growth and service relationships.</p>
+                  </article>
+                  <article>
+                    <strong>Why they fit</strong>
+                    <p>Good process fit for CRM sync, enrichment, and match automation.</p>
+                  </article>
+                  <article>
+                    <strong>Next step</strong>
+                    <p>Route to outreach with a tailored summary and confidence score.</p>
+                  </article>
+                </div>
+              </div>
+              <figcaption>Research brief and next-action summary</figcaption>
+            </figure>
+
+            <figure class="shot shot-ai">
+              <div class="mock-screen mock-match">
+                <div class="mock-topline">
+                  <span>Match queue</span>
+                  <span>Ready to review</span>
+                </div>
+                <div class="match-list">
+                  <article>
+                    <span>1</span>
+                    <div><strong>Best-fit prospects</strong><p>High-intent accounts with strong overlap.</p></div>
+                  </article>
+                  <article>
+                    <span>2</span>
+                    <div><strong>Warm prospects</strong><p>Good fit, needs human review before outreach.</p></div>
+                  </article>
+                  <article>
+                    <span>3</span>
+                    <div><strong>Low-priority list</strong><p>Useful for future nurture and watchlists.</p></div>
+                  </article>
+                </div>
+              </div>
+              <figcaption>Ranked outreach queue for business matching</figcaption>
+            </figure>
+          </div>
+
         </section>
       </main>
 
       <footer class="footer">
         <p>Palmetto Business Automation LLC</p>
-        <p>Automation • Reporting • AI Solutions</p>
+        <p>Website Design + Hosting • Automation • Reporting • AI Solutions</p>
       </footer>
     </div>
 
-    <script src="/assets/js/main.js?v=20260729"></script>
+    <script src="site-config.js"></script>
+    <script src="observability.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>

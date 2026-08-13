@@ -1,6 +1,27 @@
 /*
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  X-Frame-Options: SAMEORIGIN
-  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  ! Access-Control-Allow-Origin
+  Cache-Control: public, max-age=0, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://js.sentry-cdn.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://us.i.posthog.com; connect-src 'self' https://us.i.posthog.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io; frame-src https://challenges.cloudflare.com https://js.stripe.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)
+  Referrer-Policy: no-referrer
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 0
+
+/sow.html
+  Cache-Control: private, no-store
+
+/payment.html
+  Cache-Control: private, no-store
+
+/intake.html
+  Cache-Control: private, no-store
+
+/sow-builder.html
+  Cache-Control: private, no-store
+
+/api/*
+  Cache-Control: private, no-store

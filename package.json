@@ -1,0 +1,20 @@
+{
+  "name": "pba-site",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "jose": "^6.1.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.26.0"
+  },
+  "scripts": {
+    "check": "node --check intake.js && node --check sow.js && node --check payment.js && npm --prefix books run check",
+    "build:site": "node scripts/build-public.mjs",
+    "books:build": "npm --prefix books run build",
+    "books:test": "npm --prefix books test",
+    "test": "node --test",
+    "deploy": "npm run build:site && wrangler pages deploy dist-site --project-name palmetto-business-automation-upload"
+  }
+}
