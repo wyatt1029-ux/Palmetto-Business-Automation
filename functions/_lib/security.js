@@ -49,8 +49,12 @@ export const escapeHtml = (value) => String(value ?? "")
 export function assertSameOrigin(request, publicUrl) {
   const origin = request.headers.get("origin");
   if (!origin) return;
-  const allowed = new URL(publicUrl || request.url).origin;
-  if (origin !== allowed) {
+  // Cloudflare Pages preview deployments have their own hostname. A browser
+  // request made by the page is still same-origin even when PUBLIC_SITE_URL
+  // points at the canonical/alias hostname used in generated links.
+  const allowed = new Set([new URL(request.url).origin]);
+  if (publicUrl) allowed.add(new URL(publicUrl).origin);
+  if (!allowed.has(origin)) {
     throw Object.assign(new Error("Cross-origin request blocked."), { status: 403 });
   }
 }
@@ -120,7 +124,9 @@ export async function requireOwner(request, env) {
 
 export const handleError = (error) => {
   const status = error.status || 500;
-  const message = status >= 500 && status !== 503
+  const message = error.safeExternalError
+    ? error.message
+    : status >= 500 && status !== 503
     ? "The request could not be completed."
     : error.message || "The request could not be completed.";
   if (status >= 500) console.error(error);

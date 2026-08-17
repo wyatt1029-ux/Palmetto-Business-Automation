@@ -65,7 +65,7 @@ export async function onRequestPost({ request, env }) {
       constraints: cleanText(data.constraints, "Constraints", { max: 3_000 }),
       context: cleanText(data.context, "Supporting context", { max: 5_000 }),
       timeline: cleanText(data.timeline, "Timeline", { required: true, max: 100 }),
-      budget: cleanText(data.budget, "Budget", { required: true, max: 100 }),
+      budget: cleanText(data.budget, "Budget", { max: 100 }),
       decisionProcess: cleanText(data.decisionProcess, "Decision process", { max: 3_000 }),
     };
     if (!emailPattern.test(values.email)) {

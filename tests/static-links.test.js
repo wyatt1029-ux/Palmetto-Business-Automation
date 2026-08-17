@@ -20,3 +20,14 @@ test("legacy workflow routes redirect to the current pages", async () => {
     assert.ok(redirects.includes(expected), `Missing compatibility redirect: ${expected}`);
   }
 });
+
+test("extensionless owner builder redirects to the Access-protected route", async () => {
+  const { onRequestGet } = await import("../functions/sow-builder.js");
+  const response = onRequestGet();
+
+  assert.equal(response.status, 302);
+  assert.equal(
+    response.headers.get("location"),
+    "https://palmettobusinessautomation.com/sow-builder.html",
+  );
+});

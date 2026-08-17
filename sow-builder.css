@@ -31,6 +31,8 @@
 .intake-summary strong { color:#18342b; }
 .builder-success { margin:0 0 18px; padding:16px; border-radius:12px; color:#185c3d; background:#eaf7ef; border:1px solid #b9dec6; }
 .builder-success a { color:#185c3d; font-weight:700; overflow-wrap:anywhere; }
+.builder-success .success-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; align-items:center; }
+.builder-success .success-actions a { color:inherit; overflow-wrap:normal; }
 .form-error:empty { display:none; }
 @media (max-width: 900px) { .builder-layout { grid-template-columns:1fr; } .builder-preview { position:static; } }
 @media (max-width: 620px) { .builder-heading, .preview-label { display:block; } .access-pill { display:inline-block; margin-top:12px; } .two-column { grid-template-columns:1fr; } .two-column label:last-child { grid-column:auto; } .scope-section { grid-template-columns:1fr; } .scope-section .remove-section { margin-top:0; justify-self:start; } .builder-actions { flex-direction:column-reverse; } .builder-actions .button { width:100%; } }

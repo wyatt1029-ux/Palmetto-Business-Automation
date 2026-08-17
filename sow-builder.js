@@ -134,7 +134,7 @@
       const response = await fetch("/api/publish-sow", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to publish this SOW.");
-      success.innerHTML = `<strong>SOW published for ${esc(result.customerNumber)}.</strong><br>The client review link is ready:<br><a href="${esc(result.reviewUrl)}" target="_blank" rel="noreferrer">${esc(result.reviewUrl)}</a><br><button type="button" class="button button-secondary copy-link">Copy secure link</button>`;
+      success.innerHTML = `<strong>SOW published for ${esc(result.customerNumber)}.</strong><br>The client review link is ready:<br><a href="${esc(result.reviewUrl)}" target="_blank" rel="noreferrer">${esc(result.reviewUrl)}</a><br><span class="success-actions"><a class="button button-primary" href="${esc(result.reviewUrl)}" target="_blank" rel="noreferrer">Open secure review</a><button type="button" class="button button-secondary copy-link">Copy secure link</button></span>`;
       success.hidden = false;
       success.querySelector(".copy-link").addEventListener("click", async () => { await navigator.clipboard.writeText(result.reviewUrl); success.querySelector(".copy-link").textContent = "Copied"; });
       await loadIntakes();

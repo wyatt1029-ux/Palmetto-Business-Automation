@@ -149,13 +149,37 @@ async function syncApprovedCustomers(sql, env, actor) {
 
 async function createInvoice(sql, env, actor, data) {
   const customerId = requiredText(data.customerId, "Customer", 80);
-  const description = requiredText(data.description, "Description", 500);
-  const amount = cents(data.amountCents);
+  const rawLines = Array.isArray(data.lines) && data.lines.length ? data.lines : [{
+    description: data.description,
+    quantity: 1,
+    unitAmountCents: data.amountCents,
+  }];
+  if (rawLines.length > 25) throw Object.assign(new Error("An invoice can contain at most 25 lines."), { status: 422 });
+  const lines = rawLines.map((line, index) => {
+    const description = requiredText(line.description, `Line ${index + 1} description`, 500);
+    const quantity = Number(line.quantity || 1);
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 100000) {
+      throw Object.assign(new Error(`Line ${index + 1} quantity is invalid.`), { status: 422 });
+    }
+    const unitAmountCents = cents(line.unitAmountCents, `Line ${index + 1} amount`);
+    const amountCents = Math.round(quantity * unitAmountCents);
+    if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+      throw Object.assign(new Error(`Line ${index + 1} total is invalid.`), { status: 422 });
+    }
+    return { description, quantity, unitAmountCents, amountCents };
+  });
+  const amount = lines.reduce((total, line) => total + line.amountCents, 0);
   const issueDate = isoDate(data.issueDate, "Issue date");
   const dueDate = isoDate(data.dueDate, "Due date");
   if (dueDate < issueDate) throw Object.assign(new Error("Due date cannot precede issue date."), { status: 422 });
   const tax = Number(data.taxCents || 0);
   if (!Number.isSafeInteger(tax) || tax < 0) throw Object.assign(new Error("Tax amount is invalid."), { status: 422 });
+  const memo = String(data.memo || "").trim().slice(0, 2_000) || lines.map((line) => line.description).join(" · ").slice(0, 2_000);
+  const invoiceFooter = String(data.invoiceFooter || "").trim().slice(0, 2_000) || null;
+  const customFields = Array.isArray(data.customFields) ? data.customFields.slice(0, 4).map((field) => ({
+    name: requiredText(field.name, "Custom field name", 40),
+    value: requiredText(field.value, "Custom field value", 140),
+  })) : [];
   const customer = await sql`
     select * from accounting_customers
     where id = ${customerId} and company_id = ${companyId(env)} and active = true
@@ -172,17 +196,22 @@ async function createInvoice(sql, env, actor, data) {
       values
         (${invoiceId}, ${companyId(env)}, ${customerId}, ${data.sowVersionId || null},
          ${invoiceNumber}, ${issueDate}, ${dueDate}, 'draft', ${amount}, ${tax},
-         ${data.paymentTerms || "Due on receipt"}, ${data.memo || null}, ${Boolean(data.recurring)})
+         ${data.paymentTerms || "Due on receipt"}, ${memo}, ${Boolean(data.recurring)})
     `,
     sql`
-      insert into accounting_invoice_lines
-        (invoice_id, description, quantity, unit_amount_cents, amount_cents, revenue_account_id)
-      values (${invoiceId}, ${description}, 1, ${amount}, ${amount}, ${revenue.id})
+      update accounting_invoices
+      set invoice_footer = ${invoiceFooter}, custom_fields = ${JSON.stringify(customFields)}::jsonb
+      where id = ${invoiceId}
     `,
+    ...lines.map((line, index) => sql`
+      insert into accounting_invoice_lines
+        (invoice_id, description, quantity, unit_amount_cents, amount_cents, revenue_account_id, sort_order)
+      values (${invoiceId}, ${line.description}, ${line.quantity}, ${line.unitAmountCents}, ${line.amountCents}, ${revenue.id}, ${index})
+    `),
   ]);
   const journal = await postJournal(sql, env, actor, {
     date: issueDate,
-    description: `${invoiceNumber} · ${description}`,
+    description: `${invoiceNumber} · ${memo}`,
     sourceType: "invoice",
     sourceId: invoiceId,
     lines: invoiceJournal({ subtotalCents: amount, taxCents: tax }).map((line) => ({
@@ -195,13 +224,19 @@ async function createInvoice(sql, env, actor, data) {
     set posted_journal_entry_id = ${journal.id}, status = 'open', updated_at = now()
     where id = ${invoiceId}
   `;
-  await writeAudit(sql, env, actor, "invoice.create", "invoice", invoiceId, { invoiceNumber, totalCents: amount + tax });
+  await writeAudit(sql, env, actor, "invoice.create", "invoice", invoiceId, { invoiceNumber, totalCents: amount + tax, lineCount: lines.length });
   return { id: invoiceId, invoiceNumber };
 }
 
 async function createStripeCollection(sql, env, actor, invoiceId) {
   const rows = await sql`
-    select i.*, c.name customer_name, c.email customer_email, c.customer_number, c.stripe_customer_id
+    select i.*, c.name customer_name, c.email customer_email, c.customer_number, c.stripe_customer_id,
+      coalesce((select json_agg(json_build_object(
+        'description', l.description,
+        'quantity', l.quantity,
+        'unitAmountCents', l.unit_amount_cents,
+        'amountCents', l.amount_cents
+      ) order by l.sort_order) from accounting_invoice_lines l where l.invoice_id = i.id), '[]'::json) as lines
     from accounting_invoices i join accounting_customers c on c.id = i.customer_id
     where i.id = ${invoiceId} and i.company_id = ${companyId(env)}
       and i.status in ('open','partially_paid')
@@ -223,35 +258,99 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
   }
   const remaining = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
   const recurring = invoice.recurring;
-  const form = formBody({
-    mode: recurring ? "subscription" : "payment",
-    customer: stripeCustomerId,
-    client_reference_id: invoice.customer_number,
-    success_url: `${env.PUBLIC_SITE_URL || "https://palmettobusinessautomation.com"}/payment.html?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${env.PUBLIC_SITE_URL || "https://palmettobusinessautomation.com"}/`,
-    "line_items[0][price_data][currency]": invoice.currency,
-    "line_items[0][price_data][unit_amount]": remaining,
-    "line_items[0][price_data][product_data][name]": invoice.invoice_number,
-    "line_items[0][price_data][product_data][description]": invoice.memo || "PBA professional services",
-    ...(recurring ? { "line_items[0][price_data][recurring][interval]": "month" } : {}),
-    "line_items[0][quantity]": 1,
+  const metadata = {
     "metadata[accounting_invoice_id]": invoice.id,
     "metadata[customer_number]": invoice.customer_number,
     "metadata[project_title]": invoice.memo || invoice.invoice_number,
     "metadata[payment_label]": `${invoice.invoice_number} · PBA professional services`,
     "metadata[payment_terms_summary]": invoice.payment_terms || "Due on receipt",
-    ...(recurring ? { "subscription_data[metadata][accounting_invoice_id]": invoice.id } : {
-      "payment_intent_data[metadata][accounting_invoice_id]": invoice.id,
-      "payment_intent_data[receipt_email]": invoice.customer_email,
-      "invoice_creation[enabled]": "true",
-    }),
-  });
-  const session = await stripeForm(env, "/checkout/sessions", form, `invoice-collection:${invoice.id}:${remaining}`);
+  };
+  let stripeInvoice;
+  let subscription = null;
+  if (recurring) {
+    subscription = await stripeForm(env, "/subscriptions", formBody({
+      customer: stripeCustomerId,
+      payment_behavior: "default_incomplete",
+      "payment_settings[save_default_payment_method]": "on_subscription",
+      "items[0][price_data][currency]": invoice.currency,
+      "items[0][price_data][unit_amount]": remaining,
+      "items[0][price_data][recurring][interval]": "month",
+      "items[0][price_data][product_data][name]": invoice.invoice_number,
+      "items[0][price_data][product_data][description]": invoice.memo || "PBA professional services",
+      ...metadata,
+    }), `invoice-subscription:${invoice.id}:${remaining}`);
+    const latestInvoiceId = typeof subscription.latest_invoice === "string"
+      ? subscription.latest_invoice
+      : subscription.latest_invoice?.id;
+    if (!latestInvoiceId) throw Object.assign(new Error("Stripe did not create the initial invoice."), { status: 502 });
+    stripeInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(latestInvoiceId)}`);
+    if (!stripeInvoice.hosted_invoice_url && stripeInvoice.status === "draft") {
+      stripeInvoice = await stripeForm(
+        env,
+        `/invoices/${encodeURIComponent(latestInvoiceId)}/finalize`,
+        formBody({}),
+        `invoice-finalize:${latestInvoiceId}`,
+      );
+    }
+    if (!stripeInvoice.hosted_invoice_url) {
+      stripeInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(latestInvoiceId)}`);
+    }
+  } else {
+    const amountPaid = Number(invoice.amount_paid_cents);
+    const invoiceLines = amountPaid > 0
+      ? [{ description: `Remaining balance for ${invoice.invoice_number}`, quantity: 1, amountCents: remaining }]
+      : [
+          ...(Array.isArray(invoice.lines) && invoice.lines.length ? invoice.lines : [{
+            description: invoice.memo || invoice.invoice_number,
+            quantity: 1,
+            amountCents: Number(invoice.subtotal_cents),
+          }]),
+          ...(Number(invoice.tax_cents) > 0 ? [{
+            description: "Sales tax",
+            quantity: 1,
+            amountCents: Number(invoice.tax_cents),
+          }] : []),
+        ];
+    for (const [index, line] of invoiceLines.entries()) {
+      await stripeForm(env, "/invoiceitems", formBody({
+        customer: stripeCustomerId,
+        amount: line.amountCents,
+        currency: invoice.currency,
+        description: line.quantity === 1 ? line.description : `${line.description} · Qty ${line.quantity}`,
+        ...metadata,
+      }), `invoice-item:${invoice.id}:${index}:${line.amountCents}`);
+    }
+    const draft = await stripeForm(env, "/invoices", formBody({
+      customer: stripeCustomerId,
+      collection_method: "send_invoice",
+      days_until_due: String(Math.max(0, Math.min(365, Math.ceil(
+        (Date.parse(`${invoice.due_date}T12:00:00Z`) - Date.now()) / 86_400_000,
+      )))),
+      description: invoice.memo || invoice.invoice_number,
+      footer: invoice.invoice_footer || undefined,
+      ...Object.fromEntries((Array.isArray(invoice.custom_fields) ? invoice.custom_fields : []).flatMap((field, index) => [
+        [`custom_fields[${index}][name]`, field.name],
+        [`custom_fields[${index}][value]`, field.value],
+      ])),
+      ...metadata,
+    }), `invoice:${invoice.id}:${remaining}`);
+    stripeInvoice = await stripeForm(env, `/invoices/${encodeURIComponent(draft.id)}/finalize`, formBody({}), `invoice-finalize:${draft.id}`);
+    stripeInvoice = await stripeForm(env, `/invoices/${encodeURIComponent(draft.id)}/send`, formBody({}), `invoice-send:${draft.id}`);
+  }
+  if (!stripeInvoice.hosted_invoice_url) throw Object.assign(new Error("Stripe did not provide a hosted invoice page."), { status: 502 });
+  await sql`
+    update accounting_invoices
+    set stripe_invoice_id = ${stripeInvoice.id},
+        stripe_subscription_id = ${subscription?.id || null},
+        updated_at = now()
+    where id = ${invoice.id}
+  `;
   await writeAudit(sql, env, actor, "invoice.collection_created", "invoice", invoice.id, {
-    checkoutSessionId: session.id,
+    stripeInvoiceId: stripeInvoice.id,
+    stripeSubscriptionId: subscription?.id || null,
     recurring,
   });
-  return session.url;
+  return stripeInvoice.hosted_invoice_url;
 }
 
 async function createExpense(sql, env, actor, data) {

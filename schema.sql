@@ -19,7 +19,7 @@ create table if not exists intake_submissions (
   constraints text,
   context text,
   timeline text not null,
-  budget text not null,
+  budget text,
   decision_process text,
   idempotency_key text not null unique,
   status text not null default 'new' check (status in ('new','under_review','needs_clarification','qualified','declined','converted_to_sow')),
@@ -49,6 +49,8 @@ create table if not exists sow_versions (
   payment_status text not null default 'unpaid' check (payment_status in ('unpaid','processing','paid','refunded','failed')),
   billing_status text not null default 'not_started' check (billing_status in ('not_started','active','past_due','canceled')),
   stripe_customer_id text,
+  stripe_invoice_id text unique,
+  stripe_hosted_invoice_url text,
   stripe_subscription_id text unique,
   status text not null default 'draft' check (status in ('draft','sent','changes_requested','approved','declined','superseded')),
   review_token_hash text unique,
@@ -101,3 +103,8 @@ create table if not exists stripe_webhook_events (
 alter table intake_submissions add column if not exists idempotency_key text;
 create unique index if not exists intake_submissions_idempotency_idx
   on intake_submissions (idempotency_key) where idempotency_key is not null;
+
+alter table sow_versions add column if not exists stripe_invoice_id text;
+alter table sow_versions add column if not exists stripe_hosted_invoice_url text;
+create unique index if not exists sow_versions_stripe_invoice_idx
+  on sow_versions (stripe_invoice_id) where stripe_invoice_id is not null;

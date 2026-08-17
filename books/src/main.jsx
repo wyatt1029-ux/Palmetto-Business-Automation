@@ -353,22 +353,30 @@ function Sales({ customers, reloadCustomers }) {
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [invoiceLines, setInvoiceLines] = useState([{ description: "", quantity: "1", amount: "" }]);
 
   const createInvoice = async (event) => {
     event.preventDefault(); setWorking(true); setError("");
     try {
       const form = new FormData(event.currentTarget);
+      const lines = invoiceLines.map((line) => ({
+        description: line.description,
+        quantity: Number(line.quantity || 1),
+        unitAmountCents: Math.round(Number(line.amount) * 100),
+      }));
       await api("/api/invoices", { method: "POST", body: JSON.stringify({
         customerId: form.get("customerId"),
-        description: form.get("description"),
-        amountCents: Math.round(Number(form.get("amount")) * 100),
+        lines,
         taxCents: Math.round(Number(form.get("tax") || 0) * 100),
         issueDate: form.get("issueDate"),
         dueDate: form.get("dueDate"),
         paymentTerms: form.get("paymentTerms"),
+        memo: form.get("memo"),
+        invoiceFooter: form.get("invoiceFooter"),
+        customFields: [0, 1, 2, 3].map((index) => ({ name: form.get(`customName${index}`), value: form.get(`customValue${index}`) })).filter((field) => field.name && field.value),
         recurring: form.get("recurring") === "on",
       }) });
-      setModal(""); setNotice("Invoice created and posted to accounts receivable."); invoices.reload();
+      setModal(""); setInvoiceLines([{ description: "", quantity: "1", amount: "" }]); setNotice("Invoice created and posted to accounts receivable."); invoices.reload();
     } catch (requestError) { setError(requestError.message); }
     finally { setWorking(false); }
   };
@@ -458,18 +466,27 @@ function Sales({ customers, reloadCustomers }) {
           <a className="button button-primary" href={checkoutUrl} target="_blank" rel="noreferrer">Open Stripe checkout</a>
         </div>
       </Modal>
-      <Modal open={modal === "invoice"} title="Create an invoice" copy="The invoice posts to accounts receivable immediately. Stripe handles collection and monthly autopay." onClose={() => setModal("")}>
+      <Modal open={modal === "invoice"} title="Create an invoice" copy="PBA posts the invoice to accounts receivable, then Stripe sends one-time invoices or starts monthly autopay." onClose={() => setModal("")}>
         <Notice message={error} tone="error" onClose={() => setError("")} />
         <form className="form-grid" onSubmit={createInvoice}>
           <label className="full"><span>Customer</span><select name="customerId" required><option value="">Choose a customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.customer_number} · {customer.organization || customer.name}</option>)}</select></label>
-          <label className="full"><span>Service description</span><input name="description" placeholder="Monthly automation support" required /></label>
-          <label><span>Subtotal</span><div className="money-input"><b>$</b><input type="number" name="amount" min=".50" step=".01" required /></div></label>
+          <div className="full invoice-lines"><div className="form-section-heading"><span>Invoice lines</span><button className="mini-button" type="button" onClick={() => setInvoiceLines([...invoiceLines, { description: "", quantity: "1", amount: "" }])}>Add line</button></div>
+            {invoiceLines.map((line, index) => <div className="invoice-line" key={index}>
+              <input aria-label={`Line ${index + 1} description`} placeholder="Website design and build" value={line.description} onChange={(event) => setInvoiceLines(invoiceLines.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))} required />
+              <input aria-label={`Line ${index + 1} quantity`} type="number" min=".001" step=".001" value={line.quantity} onChange={(event) => setInvoiceLines(invoiceLines.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: event.target.value } : item))} required />
+              <div className="money-input"><b>$</b><input aria-label={`Line ${index + 1} amount`} type="number" min=".01" step=".01" placeholder="1500.00" value={line.amount} onChange={(event) => setInvoiceLines(invoiceLines.map((item, itemIndex) => itemIndex === index ? { ...item, amount: event.target.value } : item))} required /></div>
+              {invoiceLines.length > 1 && <button className="mini-button" type="button" onClick={() => setInvoiceLines(invoiceLines.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>}
+            </div>)}
+          </div>
           <label><span>Sales tax to record</span><div className="money-input"><b>$</b><input type="number" name="tax" min="0" step=".01" defaultValue="0.00" /></div></label>
           <label><span>Issue date</span><input type="date" name="issueDate" defaultValue={today} required /></label>
           <label><span>Due date</span><input type="date" name="dueDate" defaultValue={today} required /></label>
           <label className="full"><span>Payment terms</span><input name="paymentTerms" defaultValue="Due on receipt" required /></label>
+          <label className="full"><span>Memo for the customer</span><textarea name="memo" rows="3" placeholder="Thank you for partnering with PBA." /></label>
+          <label className="full"><span>Footer / legal note</span><textarea name="invoiceFooter" rows="2" placeholder="Payment is due according to the terms above." /></label>
+          <div className="full"><span>Custom fields <small>Optional · up to four</small></span>{[0, 1, 2, 3].map((index) => <div className="custom-field-row" key={index}><input name={`customName${index}`} placeholder={index === 0 ? "Customer number" : "Label"} /><input name={`customValue${index}`} placeholder={index === 0 ? "PBA-2026-001001" : "Value"} /></div>)}</div>
           <label className="check-label full"><input type="checkbox" name="recurring" defaultChecked /><span><strong>Monthly automatic payment</strong><small>Stripe securely saves the customer’s payment method and charges monthly.</small></span></label>
-          <button className="button button-primary full" disabled={working || !customers.length}>{working ? "Creating…" : "Create and post invoice"}</button>
+          <button className="button button-primary full" disabled={working || !customers.length}>{working ? "Creating…" : "Create and send through Stripe"}</button>
         </form>
       </Modal>
     </>
