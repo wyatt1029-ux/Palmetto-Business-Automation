@@ -21,13 +21,8 @@ test("legacy workflow routes redirect to the current pages", async () => {
   }
 });
 
-test("extensionless owner builder redirects to the Access-protected route", async () => {
-  const { onRequestGet } = await import("../functions/sow-builder.js");
-  const response = onRequestGet();
+test("owner builder does not define a circular pretty-URL redirect", async () => {
+  const redirects = await readFile(new URL("../_redirects", import.meta.url), "utf8");
 
-  assert.equal(response.status, 302);
-  assert.equal(
-    response.headers.get("location"),
-    "https://palmettobusinessautomation.com/sow-builder.html",
-  );
+  assert.doesNotMatch(redirects, /^\/sow-builder(?:\.html)?\s/m);
 });
