@@ -39,10 +39,11 @@ The production Worker rejects the bypass.
 
 ## Neon setup
 
-Apply `migrations/0001_accounting.sql` after the existing root `schema.sql`. Use a separate Neon
+Apply `migrations/0001_accounting.sql` and then `migrations/0002_invoice_customization.sql` after the existing root `schema.sql`. Use a separate Neon
 development branch first. The migration creates a service-business chart of accounts, the 2026
 accounting period, invoice/bill sequences, the immutable journal, banking/reconciliation records,
-document metadata, import history, and audit events.
+document metadata, import history, audit events, and the invoice memo, footer, and custom-field
+storage used when PBA sends invoices through Stripe.
 
 Before production use, have the opening balance and chart of accounts reviewed against the
 December 31, 2025 statement and existing books.

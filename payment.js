@@ -28,7 +28,7 @@
     document.querySelector("#payment-schedule").textContent = quote.billingType === "recurring_monthly" ? "Monthly automatic payment" : "One-time payment";
     const dueRow = document.querySelector("#payment-due-row");
     dueRow.hidden = !quote.paymentDueAt;
-    document.querySelector("#payment-due").textContent = quote.paymentDueAt ? new Date(`${quote.paymentDueAt}T12:00:00`).toLocaleDateString() : "";
+    document.querySelector("#payment-due").textContent = quote.paymentDueAt ? formatPaymentDate(quote.paymentDueAt) : "";
     const terms = document.querySelector("#payment-terms");
     terms.hidden = !quote.paymentTerms;
     terms.querySelector("p").textContent = quote.paymentTerms || "";
@@ -37,6 +37,12 @@
     button.textContent = quote.billingType === "recurring_monthly" ? "Set up secure automatic payment" : "Continue to secure payment";
     billingButton.hidden = !recurringActive;
   };
+
+  function formatPaymentDate(value) {
+    const raw = String(value).slice(0, 10);
+    const date = new Date(`${raw}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? raw : date.toLocaleDateString();
+  }
 
   const load = async () => {
     try {
@@ -66,7 +72,7 @@
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Unable to start payment.");
-      location.assign(result.checkoutUrl);
+      location.assign(result.hostedInvoiceUrl || result.checkoutUrl);
     } catch (err) {
       error.textContent = err.message;
       button.disabled = false;

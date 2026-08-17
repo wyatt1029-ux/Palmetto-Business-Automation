@@ -127,15 +127,50 @@ export async function onRequestPost({ request, env }) {
       `;
     } else if (event.type === "invoice.paid") {
       const subscription = subscriptionId(object);
-      if (subscription) {
+      if (object.metadata?.sow_version_id) {
         await sql`
-          update sow_versions set payment_status = 'paid', billing_status = 'active', updated_at = now()
+          update sow_versions
+          set payment_status = 'paid',
+              billing_status = ${subscription ? "active" : "not_started"},
+              stripe_customer_id = coalesce(${object.customer || null}, stripe_customer_id),
+              stripe_invoice_id = ${object.id},
+              stripe_hosted_invoice_url = coalesce(${object.hosted_invoice_url || null}, stripe_hosted_invoice_url),
+              stripe_subscription_id = coalesce(${subscription}, stripe_subscription_id),
+              updated_at = now()
+          where id = ${object.metadata.sow_version_id}
+        `;
+        await notifyOwner(
+          env,
+          `${subscription ? "Monthly invoice paid" : "Invoice paid"} · ${object.metadata.customer_number || "PBA customer"}`,
+          `<p><strong>${escapeHtml(object.metadata.project_title || "PBA professional services")}</strong></p><p>Customer ${escapeHtml(object.metadata.customer_number || "")} paid invoice ${escapeHtml(object.id)}.</p>`,
+        );
+      } else if (subscription) {
+        await sql`
+          update sow_versions
+          set payment_status = 'paid', billing_status = 'active',
+              stripe_invoice_id = ${object.id},
+              stripe_hosted_invoice_url = coalesce(${object.hosted_invoice_url || null}, stripe_hosted_invoice_url),
+              updated_at = now()
           where stripe_subscription_id = ${subscription}
         `;
       }
     } else if (event.type === "invoice.payment_failed") {
       const subscription = subscriptionId(object);
-      if (subscription) {
+      if (object.metadata?.sow_version_id) {
+        await sql`
+          update sow_versions
+          set payment_status = 'failed', billing_status = ${subscription ? "past_due" : "not_started"},
+              stripe_invoice_id = ${object.id},
+              stripe_hosted_invoice_url = coalesce(${object.hosted_invoice_url || null}, stripe_hosted_invoice_url),
+              updated_at = now()
+          where id = ${object.metadata.sow_version_id}
+        `;
+        await notifyOwner(
+          env,
+          `Invoice payment failed · ${object.metadata.customer_number || "PBA customer"}`,
+          `<p>Stripe invoice <strong>${escapeHtml(object.id)}</strong> could not be paid for ${escapeHtml(object.metadata.project_title || "the approved project")}.</p>`,
+        );
+      } else if (subscription) {
         await sql`
           update sow_versions set payment_status = 'failed', billing_status = 'past_due', updated_at = now()
           where stripe_subscription_id = ${subscription}

@@ -1,3 +1,19 @@
 name = "palmetto-business-automation"
 compatibility_date = "2026-05-04"
 pages_build_output_dir = "."
+
+[vars]
+ENVIRONMENT = "production"
+INTAKE_OWNER_EMAIL = "rosswyatt@palmettobusinessautomation.com"
+OWNER_EMAIL = "rosswyatt@palmettobusinessautomation.com"
+POLICY_AUD = "d865225dd001ab8c97b867935b8ba0611b68875afc1d343a77f0a1addedd6b93"
+PUBLIC_SITE_URL = "https://palmettobusinessautomation.com"
+TEAM_DOMAIN = "https://mute-cloud-628c.cloudflareaccess.com"
+
+[env.preview.vars]
+ENVIRONMENT = "preview"
+INTAKE_OWNER_EMAIL = "rosswyatt@palmettobusinessautomation.com"
+OWNER_EMAIL = "rosswyatt@palmettobusinessautomation.com"
+POLICY_AUD = "e7a58571cfb6af1e41c05f9a6c0b2f84e88fe3318d138d2da623d462523a03cc"
+PUBLIC_SITE_URL = "https://codex-stripe-invoicing-workf.palmetto-business-automation.pages.dev"
+TEAM_DOMAIN = "https://mute-cloud-628c.cloudflareaccess.com"

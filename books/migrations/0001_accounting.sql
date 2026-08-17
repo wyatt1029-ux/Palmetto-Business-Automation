@@ -162,6 +162,8 @@ create table if not exists accounting_invoices (
   currency text not null default 'usd',
   payment_terms text,
   memo text,
+  invoice_footer text,
+  custom_fields jsonb not null default '[]'::jsonb,
   recurring boolean not null default false,
   stripe_invoice_id text unique,
   stripe_subscription_id text,

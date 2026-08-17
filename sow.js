@@ -110,7 +110,7 @@
       const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(sow.amountCents / 100);
       [
         `${sow.paymentLabel}: ${amount}${sow.billingType === "recurring_monthly" ? " per month, billed automatically until canceled under the agreement" : ""}.`,
-        sow.paymentDueAt ? `Automatic payment setup due: ${new Date(`${sow.paymentDueAt}T12:00:00`).toLocaleDateString()}.` : "",
+        sow.paymentDueAt ? `Automatic payment setup due: ${formatPaymentDate(sow.paymentDueAt)}.` : "",
         sow.paymentTerms,
       ].filter(Boolean).forEach((line) => {
         const paragraph = document.createElement("p");
@@ -129,6 +129,12 @@
           : "A newer version may be available. Ask PBA for the latest secure review link.",
         sow.paymentUrl || sow.billingPortalUrl
       );
-    })
+  })
     .catch((err) => showMessage("Unable to open this SOW", err.message));
+
+  function formatPaymentDate(value) {
+    const raw = String(value).slice(0, 10);
+    const date = new Date(`${raw}T12:00:00`);
+    return Number.isNaN(date.getTime()) ? raw : date.toLocaleDateString();
+  }
 })();

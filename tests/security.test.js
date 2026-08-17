@@ -41,6 +41,15 @@ test("same-origin check rejects a hostile origin", () => {
   );
 });
 
+test("same-origin check accepts the active Pages deployment origin", () => {
+  assert.doesNotThrow(() => assertSameOrigin(
+    new Request("https://preview.example.pages.dev/api/publish-sow", {
+      headers: { origin: "https://preview.example.pages.dev" },
+    }),
+    "https://canonical.example.com",
+  ));
+});
+
 test("production cannot use the owner development bypass", async () => {
   await assert.rejects(
     () => requireOwner(new Request("https://example.test"), {
