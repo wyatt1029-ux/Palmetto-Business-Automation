@@ -5,6 +5,7 @@ const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "dist-site");
 const files = [
   "_headers",
+  "_redirects",
   "index.html",
   "intake.html",
   "sow.html",
