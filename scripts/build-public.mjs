@@ -21,6 +21,14 @@ const files = [
   "payment.js",
   "sow-builder.js",
 ];
+const publicDirectories = [
+  "about",
+  "contact",
+  "services",
+  "example-builds",
+  "who-i-help",
+  "case-studies",
+];
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
@@ -28,3 +36,6 @@ for (const file of files) {
   await cp(resolve(root, file), resolve(output, file));
 }
 await cp(resolve(root, "assets"), resolve(output, "assets"), { recursive: true });
+for (const directory of publicDirectories) {
+  await cp(resolve(root, directory), resolve(output, directory), { recursive: true });
+}
