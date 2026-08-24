@@ -2,18 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { sendOutlookMail } from "../functions/_lib/email.js";
 
 const execFileAsync = promisify(execFile);
 const root = fileURLToPath(new URL("../", import.meta.url));
 
-test("public build fingerprints mutable assets and includes real crawler routes", async () => {
+test("public build fingerprints assets and includes production route metadata", async () => {
   await execFileAsync(process.execPath, ["scripts/build-public.mjs"], { cwd: root });
-  const [home, services, notFound, robots, sitemap] = await Promise.all([
+  const [home, services, caseStudy, notFound, robots, sitemap] = await Promise.all([
     readFile(new URL("../dist-site/index.html", import.meta.url), "utf8"),
     readFile(new URL("../dist-site/services/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../dist-site/case-studies/business-dashboard/index.html", import.meta.url), "utf8"),
     readFile(new URL("../dist-site/404.html", import.meta.url), "utf8"),
     readFile(new URL("../dist-site/robots.txt", import.meta.url), "utf8"),
     readFile(new URL("../dist-site/sitemap.xml", import.meta.url), "utf8"),
@@ -25,9 +26,20 @@ test("public build fingerprints mutable assets and includes real crawler routes"
     assert.doesNotMatch(page, /assets\/css\/styles\.css["']/);
     assert.doesNotMatch(page, /assets\/js\/main\.js["']/);
   }
+  for (const page of [home, services, caseStudy]) {
+    assert.match(page, /<a class="skip-link" href="#[^"]+">Skip to content<\/a>/);
+    assert.match(page, /<meta property="og:title"/);
+    assert.match(page, /<meta property="og:description"/);
+    assert.match(page, /<meta name="twitter:card" content="summary"/);
+  }
+  assert.match(home, /<link rel="canonical" href="https:\/\/palmettobusinessautomation\.com\/"/);
+  assert.match(services, /href="\/services\/" aria-current="page"/);
+  assert.match(caseStudy, /href="\/example-builds\/" aria-current="page"/);
   assert.match(notFound, /<meta name="robots" content="noindex"/);
   assert.match(robots, /Sitemap: https:\/\/palmettobusinessautomation\.com\/sitemap\.xml/);
   assert.match(sitemap, /<loc>https:\/\/palmettobusinessautomation\.com\/services\/<\/loc>/);
+  await assert.rejects(access(new URL("../dist-site/assets/images/logo.png", import.meta.url)));
+  await access(new URL("../dist-site/assets/images/owner-photo.png", import.meta.url));
 });
 
 test("intake revision links load and update through token-protected handlers", async () => {

@@ -7,14 +7,13 @@
     "jose": "^6.1.0"
   },
   "devDependencies": {
-    "wrangler": "^4.26.0"
+    "wrangler": "^4.125.0"
   },
   "scripts": {
     "check": "node --check intake.js && node --check sow.js && node --check payment.js && node --check sow-builder.js && node --check scripts/build-public.mjs && node --check functions/_lib/email.js && node --check functions/api/intake.js && node --check functions/api/publish-sow.js && npm --prefix books run check",
     "build:site": "node scripts/build-public.mjs",
     "books:build": "npm --prefix books run build",
     "books:test": "npm --prefix books test",
-    "test": "node --test",
-    "deploy": "npm run build:site && wrangler pages deploy dist-site --project-name palmetto-business-automation-upload"
+    "test": "node --test"
   }
 }

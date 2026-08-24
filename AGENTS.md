@@ -7,15 +7,15 @@ This is a public marketing website for Palmetto Business Automation, LLC.
 - HTML
 - CSS
 - JavaScript
-- GitHub Pages for the live site
-- Cloudflare Pages readiness via `wrangler.toml`
+- GitHub as the source of truth
+- Cloudflare Pages for the live site
 
 ## Core rules
 - Keep the site simple, fast, and easy to deploy.
 - Do not introduce unnecessary backend services.
 - Keep the contact flow focused on Microsoft Bookings and text contact.
 - Keep public business details aligned with the service-area business model.
-- Use folder-based URLs that work cleanly on GitHub Pages.
+- Use folder-based URLs that work cleanly on Cloudflare Pages.
 
 ## Content rules
 - Keep the homepage focused on conversion.
@@ -24,6 +24,8 @@ This is a public marketing website for Palmetto Business Automation, LLC.
 - Do not expose a public street address.
 
 ## Deployment rules
-- GitHub Pages is the current production host.
-- Cloudflare Pages can be added later using the existing `wrangler.toml`.
-- Keep any future deployment changes documented in the repo.
+- `main` is the production source branch.
+- Cloudflare Pages deploys production through its GitHub integration when `main` is pushed.
+- Use feature branches and pull requests for review before merging into `main`.
+- Do not use a direct Wrangler production deployment during the normal release flow.
+- Keep future deployment changes documented in the repo.

@@ -1,0 +1,53 @@
+name: Site quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            books/package-lock.json
+
+      - name: Install site dependencies
+        run: npm ci
+
+      - name: Install PBA Books dependencies
+        run: npm --prefix books ci
+
+      - name: Audit site dependencies
+        run: npm audit --audit-level=high
+
+      - name: Audit PBA Books dependencies
+        run: npm --prefix books audit --audit-level=high
+
+      - name: Run site tests
+        run: npm test
+
+      - name: Run JavaScript checks
+        run: npm run check
+
+      - name: Build production site
+        run: npm run build:site
+
+      - name: Run PBA Books tests
+        run: npm run books:test
+
+      - name: Build PBA Books
+        run: npm run books:build

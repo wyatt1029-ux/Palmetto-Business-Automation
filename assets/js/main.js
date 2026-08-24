@@ -84,6 +84,7 @@ if (topbar && topnav) {
   menuButton.setAttribute("aria-controls", menuId);
   menuButton.innerHTML = '<span aria-hidden="true"></span><span>Menu</span>';
   topnav.id = menuId;
+  topbar.classList.add("menu-enhanced");
   topbar.insertBefore(menuButton, topnav);
 
   const closeMenu = () => {
@@ -97,7 +98,7 @@ if (topbar && topnav) {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && topbar.classList.contains("menu-open")) {
       closeMenu();
       menuButton.focus();
     }

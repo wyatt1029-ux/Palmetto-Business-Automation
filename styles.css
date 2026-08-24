@@ -675,18 +675,6 @@ img {
   display: none;
 }
 
-#coastal .shot-coastal:nth-child(1) {
-  background-image: url("assets/coastal-source-home.png");
-}
-
-#coastal .shot-coastal:nth-child(2) {
-  background-image: url("assets/coastal-source-premium.png");
-}
-
-#coastal .shot-coastal:nth-child(3) {
-  background-image: url("assets/coastal-source-glass.png");
-}
-
 #coastal .shot-coastal.shot-coastal-workflow {
   min-height: 0;
   background: linear-gradient(160deg, #123d51 0%, #0b2636 100%);

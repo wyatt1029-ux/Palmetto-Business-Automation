@@ -16,6 +16,7 @@ Static marketing website for Palmetto Business Automation, LLC.
 - `/example-builds/`
 - `/who-i-help/`
 - `/about/`
+- `/faq/`
 - `/contact/`
 
 ## Project Structure
@@ -26,16 +27,19 @@ Static marketing website for Palmetto Business Automation, LLC.
 - `who-i-help/index.html`
 - `about/index.html`
 - `contact/index.html`
+- `faq/index.html`
 - `assets/css/styles.css`
 - `assets/js/main.js`
 - `assets/images/`
+- `functions/`
+- `scripts/build-public.mjs`
 - `_redirects`
 - `_headers`
 
 ## Notes
 
-- The site is fully static.
-- No backend, forms, or database are used.
+- The public marketing pages are static and the private customer workflows use Cloudflare Pages Functions.
+- `scripts/build-public.mjs` creates the allowlisted `dist-site/` deployment artifact and fingerprints mutable CSS and JavaScript assets.
 - The pages are folder-based so they work cleanly on Cloudflare Pages.
 - `_redirects` keeps the URLs tidy.
 - `_headers` adds basic security headers.
@@ -49,7 +53,19 @@ Static marketing website for Palmetto Business Automation, LLC.
 
 ## Deployment
 
-Cloudflare Pages is the intended host for this version of the site.
+GitHub is the source of truth and `main` is the production branch. The existing Cloudflare Pages Git integration builds and deploys production after `main` is pushed. Normal releases should use a reviewed feature branch or pull request and should not deploy a local artifact directly with Wrangler.
+
+Before merging, run:
+
+```text
+npm ci
+npm --prefix books ci
+npm test
+npm run check
+npm run build:site
+npm run books:test
+npm run books:build
+```
 
 ## Engagement and payment policy
 

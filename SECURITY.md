@@ -22,7 +22,7 @@ passwords, payment details, or client data in the initial message.
   allowlist.
 - Stripe webhook signatures are verified, timestamps are limited to five minutes, payload sizes are
   bounded, and processed event IDs are deduplicated.
-- Stripe Checkout creation reuses an open session and uses a deterministic idempotency key.
+- Stripe invoice and subscription creation uses deterministic idempotency keys and reuses an existing hosted invoice when one has already been created for the approved SOW.
 - PBA Books validates Cloudflare Access on every asset and API request, scopes database queries to
   the PBA company, checks mutation origins, and never exposes database or Stripe credentials.
 - Receipt uploads are private, size-limited, restricted to PDF/JPEG/PNG, checked by file signature,
@@ -34,12 +34,12 @@ passwords, payment details, or client data in the initial message.
 Before deployment:
 
 1. Create a Turnstile widget for `palmettobusinessautomation.com`.
-2. Put its public site key in `site-config.js` and store `TURNSTILE_SECRET_KEY` as a Pages secret.
+2. Store `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` as Pages environment variables. The public key is returned by `/api/public-config`; the secret is never sent to the browser.
 3. Protect `/api/publish-sow` with Cloudflare Access and configure `POLICY_AUD`, `TEAM_DOMAIN`, and
    `OWNER_EMAIL`.
 4. Configure Stripe webhook signing secrets independently for test and production.
 5. Apply the schema additions for intake idempotency and Stripe webhook event deduplication.
-6. Deploy with `npm run deploy`; do not deploy the repository root directly.
+6. Merge the reviewed branch into `main` and push it to GitHub. The Cloudflare Pages Git integration must build the allowlisted `dist-site/` artifact; do not deploy the repository root directly.
 7. Confirm `/README.md`, `/wrangler.toml`, `/schema.sql`, `/package.json`, and `/.env` return 404.
 8. Confirm the production response includes the Content Security Policy in `_headers`.
 
