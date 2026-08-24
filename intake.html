@@ -26,7 +26,7 @@
       <main class="intake-layout">
         <section class="intake-intro">
           <p class="eyebrow">Start a project</p>
-          <h1>Let’s give the work a clear shape.</h1>
+          <h1 id="intake-page-title">Let’s give the work a clear shape.</h1>
           <p>Tell me what is happening today, what needs to improve, and what a useful first version would look like. Most people complete this in about 5–10 minutes.</p>
           <div class="intake-promises"><span>Private by default</span><span>No account required</span><span>Save and revise later</span></div>
         </section>
@@ -65,7 +65,7 @@
             <p class="form-error" id="form-error" role="alert"></p>
             <div class="form-actions"><button class="button button-secondary" type="button" id="back-button" hidden>Back</button><button class="button button-primary" type="button" id="next-button">Continue</button></div>
           </form>
-          <div class="intake-success" id="intake-success" hidden><p class="eyebrow">Received</p><h2>Thanks — I have the starting point.</h2><p>Your customer number is <strong id="customer-number"></strong>. It will follow your quote, scope, emails, and payment so you never need to enter a reference manually.</p><p>I’ll review the intake and send your secure revision link by email.</p><a class="button button-secondary" href="index.html">Return to the site</a></div>
+          <div class="intake-success" id="intake-success" hidden><p class="eyebrow" id="success-eyebrow">Received</p><h2 id="success-title">Thanks — I have the starting point.</h2><p id="success-summary">Your customer number is <strong id="customer-number"></strong>. It will follow your quote, scope, emails, and payment so you never need to enter a reference manually.</p><p id="email-status"></p><p id="revision-link-wrap" hidden><a class="button button-primary" id="revision-link" href="#">Open Your Secure Revision Link</a></p><a class="button button-secondary" href="index.html">Return to the site</a></div>
         </section>
       </main>
       <footer class="footer"><p>Palmetto Business Automation LLC</p><p>Information is used only to evaluate and follow up on your project.</p></footer>

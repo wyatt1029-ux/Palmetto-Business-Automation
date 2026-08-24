@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { escapeHtml } from "../_lib/security.js";
+import { sendOutlookMail } from "../_lib/email.js";
 
 const bytesFromHex = (value) => {
   if (!/^[a-f0-9]{64}$/i.test(value)) return null;
@@ -31,23 +32,11 @@ const verify = async (payload, header, secret) => {
 const subscriptionId = (object) =>
   object.subscription || object.parent?.subscription_details?.subscription || null;
 
-const notifyOwner = async (env, subject, content) => {
-  if (!env.OUTLOOK_ACCESS_TOKEN || !env.INTAKE_OWNER_EMAIL) return;
-  await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.OUTLOOK_ACCESS_TOKEN}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      message: {
-        subject: String(subject).replace(/[\r\n]+/g, " ").slice(0, 180),
-        body: { contentType: "HTML", content },
-        toRecipients: [{ emailAddress: { address: env.INTAKE_OWNER_EMAIL } }],
-      },
-    }),
-  });
-};
+const notifyOwner = (env, subject, html) => sendOutlookMail(env, {
+  to: env.INTAKE_OWNER_EMAIL,
+  subject,
+  html,
+});
 
 export async function onRequestPost({ request, env }) {
   const declared = Number(request.headers.get("content-length") || 0);

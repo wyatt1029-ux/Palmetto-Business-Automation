@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /intake
+Disallow: /payment
+Disallow: /sow
+Disallow: /start/
+Disallow: /scope/
+Disallow: /pay/
+Disallow: /review/
+
+Sitemap: https://palmettobusinessautomation.com/sitemap.xml

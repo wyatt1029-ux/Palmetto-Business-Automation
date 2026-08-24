@@ -7,6 +7,7 @@ import {
   readJson,
   secureJson,
 } from "../_lib/security.js";
+import { sendOutlookMail } from "../_lib/email.js";
 
 const digest = async (value) => {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -15,23 +16,11 @@ const digest = async (value) => {
 const validId = (value) => /^[0-9a-f-]{36}$/i.test(String(value || ""));
 const validToken = (value) => /^[0-9a-f]{64,128}$/i.test(String(value || ""));
 
-const notifyOwner = async (env, subject, content) => {
-  if (!env.OUTLOOK_ACCESS_TOKEN || !env.INTAKE_OWNER_EMAIL) return;
-  await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${env.OUTLOOK_ACCESS_TOKEN}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      message: {
-        subject: String(subject).replace(/[\r\n]+/g, " ").slice(0, 180),
-        body: { contentType: "HTML", content },
-        toRecipients: [{ emailAddress: { address: env.INTAKE_OWNER_EMAIL } }],
-      },
-    }),
-  });
-};
+const notifyOwner = (env, subject, html) => sendOutlookMail(env, {
+  to: env.INTAKE_OWNER_EMAIL,
+  subject,
+  html,
+});
 
 export async function onRequestGet({ request, env }) {
   try {
