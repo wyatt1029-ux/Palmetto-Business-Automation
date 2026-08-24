@@ -51,6 +51,15 @@ Static marketing website for Palmetto Business Automation, LLC.
 
 Cloudflare Pages is the intended host for this version of the site.
 
+## Engagement and payment policy
+
+- Each project receives a written Statement of Work (SOW) covering scope, exclusions, price, payment timing, timeline assumptions, and client responsibilities.
+- Clients approve the exact SOW version before payment setup. One-time projects begin only after written approval and payment are received.
+- One-time projects use Stripe hosted invoices due at approval. Larger custom systems may use payment milestones only when they are documented in the project SOW.
+- Optional ongoing care is billed automatically monthly in advance and may be canceled with 30 days’ written notice.
+- Work outside an approved SOW is separately quoted and requires written approval before it begins.
+- Client businesses retain ownership of their domains and core accounts; PBA receives only the access needed to build and support the agreed system.
+
 ## Load Testing
 
 - k6 scripts live in `k6/`.

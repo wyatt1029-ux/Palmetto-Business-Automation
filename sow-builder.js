@@ -7,7 +7,22 @@
   const error = document.querySelector("#builder-error");
   const success = document.querySelector("#builder-success");
   const byName = (name) => form.elements.namedItem(name);
+  const recommendedPayment = {
+    one_time: {
+      label: "Project payment due at approval",
+      terms: "Payment is due upon approval of this Statement of Work. PBA will begin work after written approval and payment are received. Work outside this approved scope requires a separate written quote and approval.",
+    },
+    recurring_monthly: {
+      label: "Monthly service",
+      terms: "This service is billed automatically monthly in advance and continues until canceled with 30 days’ written notice. Hosting, software licenses, payment-processing fees, and work beyond the included support are quoted separately unless this Statement of Work specifically includes them.",
+    },
+  };
+  const clientResponsibilitiesTemplate = {
+    title: "Client Responsibilities & Third-Party Access",
+    body: "Client will provide timely, accurate information, approvals, and access reasonably needed to complete the agreed scope. For Stripe, QuickBooks, payment processors, accounting platforms, APIs, or other third-party services, the client is responsible for maintaining its own accounts, completing required identity or business verification, and approving authorized access where required.\n\nPBA will provide clear instructions and use secure access methods whenever possible. Clients should not send passwords by email or text. Delays in client-provided information, account verification, third-party approvals, or platform availability may affect the project timeline. PBA will communicate known impacts and adjust timing as appropriate.",
+  };
   let intakes = [];
+  let previousBillingType = byName("billingType").value;
 
   const setError = (message = "") => { error.textContent = message; };
   const esc = (value) => String(value || "")
@@ -17,6 +32,18 @@
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
   const money = (value) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
+
+  const applyRecommendedPayment = ({ force = false } = {}) => {
+    const billingType = byName("billingType").value;
+    const current = recommendedPayment[billingType];
+    const previous = recommendedPayment[previousBillingType];
+    const label = byName("paymentLabel");
+    const terms = byName("paymentTerms");
+    if (force || !label.value.trim() || label.value === previous.label) label.value = current.label;
+    if (force || !terms.value.trim() || terms.value === previous.terms) terms.value = current.terms;
+    previousBillingType = billingType;
+    refreshPreview();
+  };
 
   const addSection = (title = "", body = "") => {
     const wrapper = document.createElement("div");
@@ -47,6 +74,16 @@
     sections.appendChild(wrapper);
     titleInput.addEventListener("input", refreshPreview);
     bodyInput.addEventListener("input", refreshPreview);
+    return wrapper;
+  };
+
+  const addClientResponsibilitiesTemplate = () => {
+    const existing = [...sections.querySelectorAll(".scope-section")].find((section) =>
+      section.querySelector('[name="sectionTitle"]').value.trim().toLowerCase() === clientResponsibilitiesTemplate.title.toLowerCase(),
+    );
+    const target = existing || addSection(clientResponsibilitiesTemplate.title, clientResponsibilitiesTemplate.body);
+    target.querySelector('[name="sectionTitle"]').focus();
+    refreshPreview();
   };
 
   const readSections = () => [...sections.querySelectorAll(".scope-section")].map((row) => ({
@@ -115,10 +152,12 @@
   };
 
   document.querySelector("#add-section").addEventListener("click", () => { addSection(); refreshPreview(); });
+  document.querySelector("#add-client-responsibilities").addEventListener("click", addClientResponsibilitiesTemplate);
   intakeSelect.addEventListener("change", selectIntake);
   document.querySelector("#preview-button").addEventListener("click", refreshPreview);
   ["title", "clientName", "clientEmail", "billingType", "amount", "paymentLabel", "paymentDueAt", "paymentTerms"].forEach((name) => byName(name).addEventListener("input", refreshPreview));
-  byName("billingType").addEventListener("change", refreshPreview);
+  byName("billingType").addEventListener("change", () => applyRecommendedPayment());
+  document.querySelector("#reset-payment-terms").addEventListener("click", () => applyRecommendedPayment({ force: true }));
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault(); setError(""); success.hidden = true;
@@ -145,6 +184,7 @@
   addSection("Business problem", "");
   addSection("Desired outcomes", "");
   addSection("Included scope", "");
+  applyRecommendedPayment();
   loadIntakes().catch((loadError) => setError(loadError.message));
   refreshPreview();
 })();

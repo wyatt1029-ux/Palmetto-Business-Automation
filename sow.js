@@ -42,7 +42,7 @@
       showMessage(
         action === "approve" ? "Scope approved" : "Changes requested",
         action === "approve"
-          ? "Thank you. Your approval has been recorded with this exact SOW version. PBA will follow up with kickoff details."
+          ? "Thank you. Your approval has been recorded with this exact SOW version. Complete secure payment next; once payment is received, PBA will schedule kickoff."
           : "Thank you. Your notes have been recorded and PBA will send a revised version for review.",
         result.paymentUrl
       );
@@ -103,6 +103,13 @@
         article.append(heading, body);
         sections.appendChild(article);
       });
+      const scopeChangeArticle = document.createElement("article");
+      const scopeChangeHeading = document.createElement("h2");
+      const scopeChangeBody = document.createElement("p");
+      scopeChangeHeading.textContent = "Changes to scope";
+      scopeChangeBody.textContent = "Requests outside the approved scope will be quoted separately and will not begin until approved in writing.";
+      scopeChangeArticle.append(scopeChangeHeading, scopeChangeBody);
+      sections.appendChild(scopeChangeArticle);
       const paymentArticle = document.createElement("article");
       const paymentHeading = document.createElement("h2");
       const paymentBody = document.createElement("div");
@@ -119,6 +126,22 @@
       });
       paymentArticle.append(paymentHeading, paymentBody);
       sections.appendChild(paymentArticle);
+      const kickoffArticle = document.createElement("article");
+      const kickoffHeading = document.createElement("h2");
+      const kickoffBody = document.createElement("p");
+      kickoffHeading.textContent = "Project payment and kickoff";
+      kickoffBody.textContent = "Your Statement of Work identifies the agreed scope, price, payment timing, and any client responsibilities. Work begins after the SOW is approved and the required initial payment has been received.";
+      kickoffArticle.append(kickoffHeading, kickoffBody);
+      sections.appendChild(kickoffArticle);
+      if (sow.billingType === "recurring_monthly") {
+        const careArticle = document.createElement("article");
+        const careHeading = document.createElement("h2");
+        const careBody = document.createElement("p");
+        careHeading.textContent = "Ongoing care";
+        careBody.textContent = "Optional care plans are billed automatically monthly in advance. Either party may cancel ongoing care with 30 days’ written notice.";
+        careArticle.append(careHeading, careBody);
+        sections.appendChild(careArticle);
+      }
       message.hidden = true;
       documentPanel.hidden = false;
       decisionPanel.hidden = sow.status !== "sent";

@@ -17,15 +17,17 @@
     const recurringActive = quote.billingType === "recurring_monthly" && quote.billingStatus === "active";
     title.textContent = recurringActive ? "Automatic payment is active" : quote.paymentStatus === "paid" ? "Payment received" : "Ready when you are.";
     copy.textContent = recurringActive
-      ? "Your monthly payment method is on file. You can securely update it through Stripe."
+      ? "Your monthly payment method is on file. Ongoing care is billed monthly in advance; use Stripe to securely update it."
       : quote.paymentStatus === "paid"
         ? "Thank you. Your payment has been confirmed."
-        : "Everything is already connected to your approved quote—nothing to enter.";
+        : quote.billingType === "recurring_monthly"
+          ? "This optional ongoing care service is billed automatically monthly in advance."
+          : "Work begins after approved scope and payment are received.";
     document.querySelector("#payment-customer").textContent = quote.customerNumber;
     document.querySelector("#payment-project").textContent = quote.title;
     document.querySelector("#payment-amount").textContent = `${money(quote.amountCents, quote.currency)}${quote.billingType === "recurring_monthly" ? " / month" : ""}`;
     document.querySelector("#payment-amount-label").textContent = quote.paymentLabel || "Amount due";
-    document.querySelector("#payment-schedule").textContent = quote.billingType === "recurring_monthly" ? "Monthly automatic payment" : "One-time payment";
+    document.querySelector("#payment-schedule").textContent = quote.billingType === "recurring_monthly" ? "Monthly automatic payment, billed in advance" : "One-time project payment due at approval";
     const dueRow = document.querySelector("#payment-due-row");
     dueRow.hidden = !quote.paymentDueAt;
     document.querySelector("#payment-due").textContent = quote.paymentDueAt ? formatPaymentDate(quote.paymentDueAt) : "";

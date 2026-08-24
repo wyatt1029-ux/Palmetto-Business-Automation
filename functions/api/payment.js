@@ -14,13 +14,6 @@ const validId = (value) => /^[0-9a-f-]{36}$/i.test(String(value || ""));
 const validToken = (value) => /^[0-9a-f]{64,128}$/i.test(String(value || ""));
 const validSession = (value) => /^cs_(test_|live_)?[A-Za-z0-9_]{20,220}$/.test(String(value || ""));
 
-const unixDueDate = (value) => {
-  if (!value) return null;
-  const parsed = Date.parse(`${value}T12:00:00Z`);
-  if (!Number.isFinite(parsed)) return null;
-  return Math.floor(parsed / 1000);
-};
-
 const stripe = async (env, path, options = {}) => {
   if (!env.STRIPE_SECRET_KEY) {
     throw Object.assign(new Error("Payment processing is not configured."), { status: 503 });
@@ -245,9 +238,8 @@ export async function onRequestPost({ request, env }) {
         body: new URLSearchParams({
           customer: customer.id,
           collection_method: "send_invoice",
-          days_until_due: String(Math.max(0, Math.min(365, quote.payment_due_at
-            ? Math.ceil((unixDueDate(quote.payment_due_at) - Date.now() / 1000) / 86400)
-            : 30))),
+          // One-time project payment is due when the approved SOW creates the invoice.
+          days_until_due: "0",
           description: quote.title.slice(0, 500),
           ...metadata,
           "metadata[payment_terms_summary]": quote.payment_terms.slice(0, 250),

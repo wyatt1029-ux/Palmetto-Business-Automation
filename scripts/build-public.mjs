@@ -27,3 +27,8 @@ for (const file of files) {
   await cp(resolve(root, file), resolve(output, file));
 }
 await cp(resolve(root, "assets"), resolve(output, "assets"), { recursive: true });
+
+const publicRoutes = ["about", "case-studies", "contact", "example-builds", "faq", "services", "who-i-help"];
+for (const route of publicRoutes) {
+  await cp(resolve(root, route), resolve(output, route), { recursive: true });
+}

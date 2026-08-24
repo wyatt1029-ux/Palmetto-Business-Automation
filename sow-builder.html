@@ -49,9 +49,10 @@
                 <label>Client email<input name="clientEmail" type="email" required maxlength="254" /></label>
                 <label>Billing model<select name="billingType"><option value="recurring_monthly">Monthly recurring</option><option value="one_time">One-time project</option></select></label>
                 <label>Amount<input name="amount" type="number" min="0.50" step="0.01" placeholder="1500.00" required /></label>
-                <label>Payment label<input name="paymentLabel" placeholder="Monthly automation support" required maxlength="160" /></label>
+                <label>Payment label<input name="paymentLabel" placeholder="Monthly service" required maxlength="160" /></label>
                 <label>Payment setup due<input name="paymentDueAt" type="date" /></label>
-                <label>Payment terms<input name="paymentTerms" value="Monthly payment is due on the agreed billing date and continues until canceled under the agreement." required maxlength="3000" /></label>
+                <label>Payment terms<textarea name="paymentTerms" required maxlength="3000">This service is billed automatically monthly in advance and continues until canceled with 30 days’ written notice. Hosting, software licenses, payment-processing fees, and work beyond the included support are quoted separately unless this Statement of Work specifically includes them.</textarea></label>
+                <button class="mini-button" id="reset-payment-terms" type="button">Reset to recommended terms</button>
               </div>
             </fieldset>
 
@@ -59,7 +60,7 @@
               <legend>3. Write the scope</legend>
               <p class="field-help">These sections become the client-facing SOW. Keep each section clear enough to approve.</p>
               <div id="sections" class="scope-sections"></div>
-              <button class="button button-secondary" id="add-section" type="button">Add scope section</button>
+              <div class="builder-template-actions"><button class="button button-secondary" id="add-section" type="button">Add scope section</button><button class="button button-secondary" id="add-client-responsibilities" type="button">Add client responsibilities template</button></div>
             </fieldset>
 
             <div class="builder-actions"><button class="button button-secondary" id="preview-button" type="button">Refresh preview</button><button class="button button-primary" type="submit">Publish SOW and send link</button></div>
