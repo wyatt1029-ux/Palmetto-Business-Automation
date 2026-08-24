@@ -154,6 +154,24 @@ img {
   outline: none;
 }
 
+.topbar-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fffaf3;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.topbar-cta:focus-visible,
+.topnav a:focus-visible,
+a:focus-visible,
+button:focus-visible { outline: 3px solid var(--accent-3); outline-offset: 3px; }
+
 .hero,
 .case-study,
 .section-intro {
@@ -1031,4 +1049,18 @@ img {
     grid-template-columns: 1fr;
     padding: 18px;
   }
+}
+
+.menu-button { display: none; }
+@media (max-width: 720px) {
+  .topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .topbar-cta { grid-column: 1 / -1; width: 100%; }
+  .menu-button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: #fffaf3; color: var(--ink); font: inherit; font-weight: 700; }
+  .menu-button > span:first-child, .menu-button > span:first-child::before, .menu-button > span:first-child::after { display: block; width: 18px; height: 2px; border-radius: 99px; background: currentColor; content: ""; }
+  .menu-button > span:first-child { position: relative; }
+  .menu-button > span:first-child::before { position: absolute; top: -6px; }
+  .menu-button > span:first-child::after { position: absolute; top: 6px; }
+  .topnav { display: none; grid-column: 1 / -1; grid-row: 2; flex-direction: column; align-items: stretch; gap: 0; width: 100%; padding: 6px; border: 1px solid var(--line); border-radius: 14px; background: #fffaf3; }
+  .menu-open .topnav { display: flex; }
+  .topnav a { min-height: 44px; display: flex; align-items: center; }
 }

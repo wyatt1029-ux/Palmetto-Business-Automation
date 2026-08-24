@@ -38,3 +38,23 @@ test("extensionless owner builder redirects to the Access-protected route", asyn
     "https://palmettobusinessautomation.com/sow-builder.html",
   );
 });
+
+test("public marketing navigation and starting prices stay available", async () => {
+  const [home, services, faq, intake] = await Promise.all([
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../services/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../faq/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../intake.html", import.meta.url), "utf8"),
+  ]);
+
+  for (const page of [home, services, faq]) {
+    assert.match(page, /Websites • Workflows • Reporting/);
+    assert.match(page, /href="\/faq\/"/);
+  }
+  for (const price of ["From $500", "From $800", "From $1,000", "From $1,500"]) {
+    assert.ok(services.includes(price), `Missing public price: ${price}`);
+  }
+  assert.match(faq, /30 days’ written notice/);
+  assert.match(intake, /Most people complete this in about 5–10 minutes\./);
+  assert.match(intake, /Back to Services &amp; Pricing/);
+});

@@ -72,6 +72,42 @@ if (!isLocalPreview && observability.posthogKey) {
 
 const revealables = document.querySelectorAll(".reveal");
 
+const topbar = document.querySelector(".topbar");
+const topnav = document.querySelector(".topnav");
+
+if (topbar && topnav) {
+  const menuButton = document.createElement("button");
+  const menuId = "primary-navigation";
+  menuButton.className = "menu-button";
+  menuButton.type = "button";
+  menuButton.setAttribute("aria-expanded", "false");
+  menuButton.setAttribute("aria-controls", menuId);
+  menuButton.innerHTML = '<span aria-hidden="true"></span><span>Menu</span>';
+  topnav.id = menuId;
+  topbar.insertBefore(menuButton, topnav);
+
+  const closeMenu = () => {
+    topbar.classList.remove("menu-open");
+    menuButton.setAttribute("aria-expanded", "false");
+  };
+
+  menuButton.addEventListener("click", () => {
+    const isOpen = topbar.classList.toggle("menu-open");
+    menuButton.setAttribute("aria-expanded", String(isOpen));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeMenu();
+      menuButton.focus();
+    }
+  });
+
+  topnav.addEventListener("click", (event) => {
+    if (event.target.closest("a")) closeMenu();
+  });
+}
+
 if (!prefersReducedMotion && "IntersectionObserver" in window) {
   const observer = new IntersectionObserver(
     (entries) => {
