@@ -5,6 +5,7 @@ const root = resolve(import.meta.dirname, "..");
 const output = resolve(root, "dist-site");
 const files = [
   "_headers",
+  "_redirects",
   "index.html",
   "intake.html",
   "sow.html",
@@ -20,6 +21,15 @@ const files = [
   "payment.js",
   "sow-builder.js",
 ];
+const publicDirectories = [
+  "about",
+  "contact",
+  "services",
+  "example-builds",
+  "who-i-help",
+  "case-studies",
+  "faq",
+];
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
@@ -27,8 +37,6 @@ for (const file of files) {
   await cp(resolve(root, file), resolve(output, file));
 }
 await cp(resolve(root, "assets"), resolve(output, "assets"), { recursive: true });
-
-const publicRoutes = ["about", "case-studies", "contact", "example-builds", "faq", "services", "who-i-help"];
-for (const route of publicRoutes) {
-  await cp(resolve(root, route), resolve(output, route), { recursive: true });
+for (const directory of publicDirectories) {
+  await cp(resolve(root, directory), resolve(output, directory), { recursive: true });
 }

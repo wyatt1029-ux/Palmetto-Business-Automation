@@ -12,6 +12,7 @@ test("public workflow pages are included in the site build", async () => {
 test("legacy workflow routes redirect to the current pages", async () => {
   const redirects = await readFile(new URL("../_redirects", import.meta.url), "utf8");
   for (const expected of [
+    "/index.html / 301",
     "/start/ /intake.html 301",
     "/scope/ /sow.html 301",
     "/pay/ /payment.html 301",
@@ -19,6 +20,12 @@ test("legacy workflow routes redirect to the current pages", async () => {
   ]) {
     assert.ok(redirects.includes(expected), `Missing compatibility redirect: ${expected}`);
   }
+});
+
+test("owner builder does not define a circular pretty-URL redirect", async () => {
+  const redirects = await readFile(new URL("../_redirects", import.meta.url), "utf8");
+
+  assert.doesNotMatch(redirects, /^\/sow-builder(?:\.html)?\s/m);
 });
 
 test("extensionless owner builder redirects to the Access-protected route", async () => {

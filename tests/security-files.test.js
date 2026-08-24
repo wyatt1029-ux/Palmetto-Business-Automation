@@ -23,6 +23,7 @@ test("public build script uses an allowlist and excludes source material", async
     assert.equal(script.includes(`"${forbidden}"`), false, `${forbidden} must not be public`);
   }
   assert.ok(script.includes('"_headers"'));
+  assert.ok(script.includes('"_redirects"'));
 });
 
 test("telemetry is disabled on magic-link pages", async () => {
