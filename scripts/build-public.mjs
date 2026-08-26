@@ -33,6 +33,7 @@ const publicDirectories = [
   "who-i-help",
   "case-studies",
   "faq",
+  "owner",
 ];
 const fingerprintedAssets = [
   "styles.css",

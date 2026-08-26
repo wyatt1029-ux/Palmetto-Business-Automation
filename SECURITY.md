@@ -20,6 +20,9 @@ passwords, payment details, or client data in the initial message.
   tokens, dates, amounts, and request sizes.
 - The private SOW publisher requires a verified Cloudflare Access JWT and an explicit owner-email
   allowlist.
+- `/owner/*` and `/api/leads` are owner-only. Configure a Cloudflare Access application for the
+  owner path with the same `POLICY_AUD`, `TEAM_DOMAIN`, and `OWNER_EMAIL` values used by the
+  existing owner APIs before exposing the route.
 - Stripe webhook signatures are verified, timestamps are limited to five minutes, payload sizes are
   bounded, and processed event IDs are deduplicated.
 - Stripe invoice and subscription creation uses deterministic idempotency keys and reuses an existing hosted invoice when one has already been created for the approved SOW.
@@ -39,6 +42,9 @@ Before deployment:
    `OWNER_EMAIL`.
 4. Configure Stripe webhook signing secrets independently for test and production.
 5. Apply the schema additions for intake idempotency and Stripe webhook event deduplication.
+6. Apply `migrations/0004_sales_workspace.sql` after the existing schema/migrations. It is additive,
+   creates archival lead records and activities, and links website intake records without copying
+   private form fields into public lead-contact fields.
 6. Merge the reviewed branch into `main` and push it to GitHub. The Cloudflare Pages Git integration must build the allowlisted `dist-site/` artifact; do not deploy the repository root directly.
 7. Confirm `/README.md`, `/wrangler.toml`, `/schema.sql`, `/package.json`, and `/.env` return 404.
 8. Confirm the production response includes the Content Security Policy in `_headers`.

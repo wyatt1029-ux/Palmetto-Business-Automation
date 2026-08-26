@@ -9,6 +9,7 @@ import {
   verifyTurnstile,
 } from "../_lib/security.js";
 import { sendOutlookMail } from "../_lib/email.js";
+import { syncLeadFromIntake } from "../_lib/leads.js";
 
 const digest = async (value) => {
   const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -136,6 +137,14 @@ export async function onRequestPost({ request, env }) {
     `;
     const id = rows[0].id;
     const customerNumber = rows[0].customer_number;
+    try {
+      await syncLeadFromIntake(sql, { id, customerNumber, organization: values.organization });
+    } catch (leadError) {
+      // Keep the existing public intake confirmation reliable if the optional
+      // owner workspace migration is not yet applied; the error is visible in
+      // server logs for follow-up.
+      console.error("Sales workspace lead sync failed.", leadError);
+    }
     const revisionUrl = `${env.PUBLIC_SITE_URL}/intake?submission=${id}&token=${revisionToken}`;
 
     if (env.INTAKE_OWNER_EMAIL) {

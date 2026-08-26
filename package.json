@@ -10,8 +10,9 @@
     "wrangler": "^4.125.0"
   },
   "scripts": {
-    "check": "node --check intake.js && node --check sow.js && node --check payment.js && node --check sow-builder.js && node --check scripts/build-public.mjs && node --check functions/_lib/email.js && node --check functions/api/intake.js && node --check functions/api/publish-sow.js && npm --prefix books run check",
+    "check": "node --check intake.js && node --check sow.js && node --check payment.js && node --check sow-builder.js && node --check scripts/build-public.mjs && node --check functions/_lib/email.js && node --check functions/_lib/leads.js && node --check functions/api/intake.js && node --check functions/api/leads.js && node --check functions/api/publish-sow.js && node --check owner/leads/leads.js && npm --prefix books run check",
     "build:site": "node scripts/build-public.mjs",
+    "preview": "node scripts/preview-server.mjs 8788 dist-site",
     "books:build": "npm --prefix books run build",
     "books:test": "npm --prefix books test",
     "test": "node --test"

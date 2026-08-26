@@ -18,6 +18,7 @@ Static marketing website for Palmetto Business Automation, LLC.
 - `/about/`
 - `/faq/`
 - `/contact/`
+- `/owner/leads/` (owner-only; protected by Cloudflare Access)
 
 ## Project Structure
 
@@ -32,6 +33,8 @@ Static marketing website for Palmetto Business Automation, LLC.
 - `assets/js/main.js`
 - `assets/images/`
 - `functions/`
+- `owner/leads/`
+- `migrations/0004_sales_workspace.sql`
 - `scripts/build-public.mjs`
 - `_redirects`
 - `_headers`
@@ -43,6 +46,26 @@ Static marketing website for Palmetto Business Automation, LLC.
 - The pages are folder-based so they work cleanly on Cloudflare Pages.
 - `_redirects` keeps the URLs tidy.
 - `_headers` adds basic security headers.
+
+## Private sales workspace
+
+The owner-only Leads workspace is the private source of truth for researched prospects and
+website inquiries. It uses the existing Neon database and `requireOwner` authorization helper;
+it does not create a second CRM or expose lead data through public routes. Apply
+`migrations/0004_sales_workspace.sql` after the existing schema migrations, then configure the
+same Cloudflare Access policy and owner allowlist used by the SOW builder. Website inquiries are
+matched to a lead by normalized organization name and receive an internal `inquiry_received`
+activity. Existing SOW, payment, project, and care records remain the related downstream records.
+
+For a local UI preview with clearly labeled sanitized demo leads:
+
+```text
+npm run build:site
+npm run preview
+```
+
+Open `http://127.0.0.1:8788/owner/leads/?demo=1`. Demo mode is hostname-gated to localhost and
+does not call the database. Remove `?demo=1` to exercise the owner-authenticated production path.
 
 ## Editing
 

@@ -4,6 +4,7 @@ Disallow: /api/
 Disallow: /intake
 Disallow: /payment
 Disallow: /sow
+Disallow: /owner
 Disallow: /start/
 Disallow: /scope/
 Disallow: /pay/
