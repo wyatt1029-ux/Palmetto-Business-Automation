@@ -157,6 +157,7 @@ test("owner workspace keeps its browser API inside the Access-protected route", 
   ]);
   assert.match(client, /const LEADS_API = "\/owner\/api\/leads"/);
   assert.doesNotMatch(client, /api\([`"]\/api\/leads/);
+  assert.match(client, /setField\(form, "id", lead\?\.id \|\| ""\)/);
   assert.match(protectedRoute, /from "\.\.\/\.\.\/api\/leads\.js"/);
   assert.match(html, /id="cancel-lead" type="button"/);
   assert.match(html, /id="close-lead" type="button"/);
