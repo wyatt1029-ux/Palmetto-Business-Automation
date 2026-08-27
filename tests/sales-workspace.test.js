@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeBusinessName, normalizeDomain, syncLeadFromIntake, validateLeadInput } from "../functions/_lib/leads.js";
+import { normalizeBusinessName, normalizeDomain, serializeLead, syncLeadFromIntake, validateLeadInput } from "../functions/_lib/leads.js";
 import { requireOwner } from "../functions/_lib/security.js";
 import { readFile } from "node:fs/promises";
 import { __test as leadApi, onRequestGet as getLeads, onRequestPost as postLead, onRequestPut as putLead } from "../functions/api/leads.js";
@@ -89,6 +89,22 @@ test("lead input preserves editable workflow fields and validates public researc
   assert.throws(() => validateLeadInput({ businessName: "QA Demo", formationDate: "2026-02-31" }), /Formation date is invalid/);
   assert.throws(() => validateLeadInput({ businessName: "QA Demo", publicEmail: "not-an-email" }), /Public email is invalid/);
   assert.throws(() => validateLeadInput({ businessName: "QA Demo", sourceUrls: ["javascript:alert(1)"] }), /Source URL is invalid/);
+});
+
+test("lead serialization converts Neon date values for HTML date controls", () => {
+  const lead = serializeLead(leadRow({
+    formation_date: new Date("2026-07-01T00:00:00.000Z"),
+    opened_date: "2026-07-15T00:00:00.000Z",
+    discovered_date: new Date("2026-08-01T00:00:00.000Z"),
+    next_action_due: "2026-08-28T00:00:00.000Z",
+    last_verified_date: new Date("2026-08-27T00:00:00.000Z"),
+  }));
+
+  assert.equal(lead.formationDate, "2026-07-01");
+  assert.equal(lead.openedDate, "2026-07-15");
+  assert.equal(lead.discoveredDate, "2026-08-01");
+  assert.equal(lead.nextActionDue, "2026-08-28");
+  assert.equal(lead.lastVerifiedDate, "2026-08-27");
 });
 
 test("owner authorization protects every lead read", async () => {
