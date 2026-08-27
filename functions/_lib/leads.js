@@ -114,16 +114,21 @@ const parseJson = (value, fallback = []) => {
   if (value && typeof value === "object") return value;
   try { return JSON.parse(value || "null") ?? fallback; } catch { return fallback; }
 };
+const dateOnly = (value) => {
+  if (!value) return null;
+  const match = String(value instanceof Date ? value.toISOString() : value).match(/^\d{4}-\d{2}-\d{2}/);
+  return match?.[0] || null;
+};
 export const serializeLead = (row) => ({
   id: row.id, businessName: row.business_name, websiteUrl: row.website_url, normalizedDomain: row.normalized_domain,
   city: row.city, serviceArea: row.service_area, industry: row.industry, source: row.source,
   sourceUrls: parseJson(row.source_urls), publicPhone: row.public_phone, publicEmail: row.public_email,
   publicContactFormUrl: row.public_contact_form_url, publicSocialLinks: parseJson(row.public_social_links),
   stage: row.stage, fitLevel: row.fit_level, fitReasons: parseJson(row.fit_reasons), servicesInterest: parseJson(row.services_interest),
-  formationDate: row.formation_date, openedDate: row.opened_date, dateConfidence: row.date_confidence, discoveredDate: row.discovered_date,
-  launchSignals: parseJson(row.launch_signals), nextAction: row.next_action, nextActionDue: row.next_action_due,
+  formationDate: dateOnly(row.formation_date), openedDate: dateOnly(row.opened_date), dateConfidence: row.date_confidence, discoveredDate: dateOnly(row.discovered_date),
+  launchSignals: parseJson(row.launch_signals), nextAction: row.next_action, nextActionDue: dateOnly(row.next_action_due),
   nextActionOwner: row.next_action_owner, nextActionCompleted: row.next_action_completed, lastActivityDate: row.last_activity_date,
-  lastVerifiedDate: row.last_verified_date, contactStatus: row.contact_status, doNotContact: row.do_not_contact,
+  lastVerifiedDate: dateOnly(row.last_verified_date), contactStatus: row.contact_status, doNotContact: row.do_not_contact,
   doNotContactReason: row.do_not_contact_reason, internalNotes: row.internal_notes, archived: row.archived,
   tidalConflictReviewRequired: row.tidal_conflict_review_required, tidalConflictReviewStatus: row.tidal_conflict_review_status,
   tidalConflictNotes: row.tidal_conflict_notes, intakeSubmissionId: row.intake_submission_id, createdAt: row.created_at, updatedAt: row.updated_at,
