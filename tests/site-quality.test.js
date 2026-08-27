@@ -25,3 +25,10 @@ test("deployment documentation identifies GitHub main as the Cloudflare producti
   assert.match(readme, /Cloudflare Pages Git integration/);
   assert.equal(Object.hasOwn(JSON.parse(packageJson).scripts, "deploy"), false);
 });
+
+test("production owner functions validate the current Cloudflare Access application", async () => {
+  const wrangler = await readFile(new URL("../wrangler.toml", import.meta.url), "utf8");
+
+  assert.match(wrangler, /POLICY_AUD = "48eef1e8795d47d78ba55c2d74ef3d06428b39f281c88c17d20599d48b85cefb"/);
+  assert.match(wrangler, /TEAM_DOMAIN = "https:\/\/mute-cloud-628c\.cloudflareaccess\.com"/);
+});
