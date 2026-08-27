@@ -240,6 +240,9 @@
   function openLeadForm(lead = null, focusName = "businessName") {
     const form = $("#lead-form");
     form.reset();
+    // Explicitly clear edit identity before Add Lead. Some browsers preserve
+    // a hidden input's programmatically assigned value across form.reset().
+    setField(form, "id", lead?.id || "");
     $("#lead-form-error").textContent = "";
     $("#dialog-title").textContent = lead ? "Edit Lead" : "Add Lead";
     $("#save-lead").textContent = lead ? "Save changes" : "Save lead";
