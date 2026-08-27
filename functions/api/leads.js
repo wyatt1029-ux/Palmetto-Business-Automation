@@ -127,7 +127,7 @@ const duplicateRows = async (sql, normalized, domain, excludeId = null) => sql`
   select id, business_name, website_url, city, stage, updated_at
   from leads
   where id <> coalesce(${excludeId}::uuid, '00000000-0000-0000-0000-000000000000'::uuid)
-    and (normalized_business_name = ${normalized} or (${domain} is not null and normalized_domain = ${domain}))
+    and (normalized_business_name = ${normalized} or normalized_domain = ${domain}::text)
   order by archived asc, updated_at desc
   limit 10
 `;

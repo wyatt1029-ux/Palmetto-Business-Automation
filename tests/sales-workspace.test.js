@@ -218,8 +218,13 @@ test("lead API records explicit stage and do-not-contact changes", async () => {
 });
 
 test("duplicate-review migration keeps lookup performance without blocking reviewed records", async () => {
-  const migration = await readFile(new URL("../migrations/0005_lead_duplicate_review.sql", import.meta.url), "utf8");
+  const [migration, api] = await Promise.all([
+    readFile(new URL("../migrations/0005_lead_duplicate_review.sql", import.meta.url), "utf8"),
+    readFile(new URL("../functions/api/leads.js", import.meta.url), "utf8"),
+  ]);
   assert.match(migration, /drop index if exists leads_name_domain_unique_idx/i);
   assert.match(migration, /create index if not exists leads_name_domain_lookup_idx/i);
   assert.doesNotMatch(migration, /create unique index/i);
+  assert.match(api, /normalized_domain = \$\{domain\}::text/);
+  assert.doesNotMatch(api, /\$\{domain\} is not null/);
 });
