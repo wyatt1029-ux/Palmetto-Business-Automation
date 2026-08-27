@@ -53,3 +53,13 @@ test("owner workspace is excluded from discovery and marked private", async () =
   assert.match(headers, /X-Robots-Tag: noindex/);
   assert.doesNotMatch(build, /owner\/leads\/index\.html.*sitemap/);
 });
+
+test("owner workspace keeps its browser API inside the Access-protected route", async () => {
+  const [client, protectedRoute] = await Promise.all([
+    readFile(new URL("../owner/leads/leads.js", import.meta.url), "utf8"),
+    readFile(new URL("../functions/owner/api/leads.js", import.meta.url), "utf8"),
+  ]);
+  assert.match(client, /const LEADS_API = "\/owner\/api\/leads"/);
+  assert.doesNotMatch(client, /api\([`"]\/api\/leads/);
+  assert.match(protectedRoute, /from "\.\.\/\.\.\/api\/leads\.js"/);
+});

@@ -20,9 +20,10 @@ passwords, payment details, or client data in the initial message.
   tokens, dates, amounts, and request sizes.
 - The private SOW publisher requires a verified Cloudflare Access JWT and an explicit owner-email
   allowlist.
-- `/owner/*` and `/api/leads` are owner-only. Configure a Cloudflare Access application for the
-  owner path with the same `POLICY_AUD`, `TEAM_DOMAIN`, and `OWNER_EMAIL` values used by the
-  existing owner APIs before exposing the route.
+- `/owner/*`, including the browser-facing `/owner/api/leads` endpoint, is owner-only. Configure a
+  Cloudflare Access application for the owner path with the same `POLICY_AUD`, `TEAM_DOMAIN`, and
+  `OWNER_EMAIL` values used by the existing owner APIs before exposing the route. The legacy
+  `/api/leads` handler also requires a valid Access JWT and cannot return data publicly.
 - Stripe webhook signatures are verified, timestamps are limited to five minutes, payload sizes are
   bounded, and processed event IDs are deduplicated.
 - Stripe invoice and subscription creation uses deterministic idempotency keys and reuses an existing hosted invoice when one has already been created for the approved SOW.
