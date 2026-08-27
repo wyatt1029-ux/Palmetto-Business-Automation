@@ -57,6 +57,20 @@ same Cloudflare Access policy and owner allowlist used by the SOW builder. Websi
 matched to a lead by normalized organization name and receive an internal `inquiry_received`
 activity. Existing SOW, payment, project, and care records remain the related downstream records.
 
+### Owner-triggered lead discovery
+
+New Business Radar includes an owner-only public-web search form. It accepts a city, ZIP code,
+county, region, or telephone area code plus optional business types. Search runs are explicit and
+bounded; they do not run in the background, send outreach, or automatically create lead records.
+The owner reviews source links and observed website checks before selecting **Add to Radar**.
+
+The production search adapter uses the Brave Search API. Add its key as a Cloudflare Pages secret
+named `BRAVE_SEARCH_API_KEY`; never commit the key or place it in `wrangler.toml`. A search may use
+provider quota. Website checks inspect only public HTTP(S) business pages, reject local/private
+targets, cap response size and duration, and record neutral evidence such as a missing intake form
+or booking link. Unknown opening dates stay unknown. Marine-related results enter a pending Tidal
+conflict review and are not treated as ready for outreach.
+
 For a local UI preview with clearly labeled sanitized demo leads:
 
 ```text
@@ -65,7 +79,8 @@ npm run preview
 ```
 
 Open `http://127.0.0.1:8788/owner/leads/?demo=1`. Demo mode is hostname-gated to localhost and
-does not call the database. Remove `?demo=1` to exercise the owner-authenticated production path.
+does not call the database or search provider. Open New Business Radar and run a search to see a
+sanitized candidate. Remove `?demo=1` to exercise the owner-authenticated production path.
 
 ## Editing
 

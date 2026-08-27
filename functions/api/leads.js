@@ -66,7 +66,6 @@ const applyView = (items, view, params) => {
   if (view === "queue") return items.filter((lead) => !lead.archived && !lead.nextActionCompleted && (lead.nextAction || lead.nextActionDue));
   if (view === "pipeline") return items.filter((lead) => !lead.archived);
   if (view === "radar") {
-    const serviceAreaPattern = /charleston|mount pleasant|summerville|north charleston|goose creek|myrtle beach|grand strand|pawleys|georgetown/i;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
     return items.filter((lead) => {
@@ -74,7 +73,6 @@ const applyView = (items, view, params) => {
       return !lead.archived && ["high", "medium"].includes(lead.fitLevel)
         && lead.contactStatus === "not_contacted"
         && lead.tidalConflictReviewStatus !== "pending"
-        && serviceAreaPattern.test(`${lead.city || ""} ${lead.serviceArea || ""}`)
         && launchDate && new Date(`${launchDate}T12:00:00`) >= cutoff;
     });
   }

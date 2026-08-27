@@ -1,13 +1,17 @@
 (() => {
   const LEADS_API = "/owner/api/leads";
+  const DISCOVERY_API = "/owner/api/discovery";
   const LIST_FIELDS = ["sourceUrls", "publicSocialLinks", "fitReasons", "servicesInterest", "launchSignals"];
   const BOOLEAN_FIELDS = ["nextActionCompleted", "tidalConflictReviewRequired", "doNotContact", "archived"];
   const pipelineStages = ["new", "contacted", "discovery_scheduled", "qualified", "scope_sent", "approved", "paid_active"];
-  const state = { view: "queue", leads: [], selected: null, pipelineCounts: {} };
+  const state = { view: "queue", leads: [], selected: null, pipelineCounts: {}, discoveryCandidates: [] };
   const demoLeads = [
     { id: "demo-1", businessName: "Lowcountry HVAC Demo", city: "Charleston", serviceArea: "Charleston", industry: "Home services", source: "new_business_radar", stage: "new", fitLevel: "high", fitReasons: ["No clear service-request form"], nextAction: "Review contact path", nextActionDue: "2026-08-28", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["New LLC filing"], dateConfidence: "confirmed", discoveredDate: "2026-08-20", lastVerifiedDate: "2026-08-25", createdAt: "2026-08-20", servicesInterest: ["landing page"], sourceUrls: [], publicSocialLinks: [] },
     { id: "demo-2", businessName: "Harbor Route Marine Demo", city: "Mount Pleasant", serviceArea: "Charleston", industry: "Marine service", source: "researched", stage: "contacted", fitLevel: "medium", fitReasons: ["Website has phone only; no lead workflow"], nextAction: "Complete conflict review", nextActionDue: "2026-08-27", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewRequired: true, tidalConflictReviewStatus: "pending", archived: false, launchSignals: ["New website"], dateConfidence: "unknown", discoveredDate: "2026-08-18", lastVerifiedDate: "2026-08-24", createdAt: "2026-08-18", servicesInterest: ["workflow"], sourceUrls: [], publicSocialLinks: [] },
     { id: "demo-3", businessName: "Palmetto Bookkeeping Demo", city: "Myrtle Beach", serviceArea: "Grand Strand", industry: "Professional services", source: "website_inquiry", stage: "discovery_scheduled", fitLevel: "high", fitReasons: ["Payment or intake workflow may be fragmented"], nextAction: "Prepare discovery notes", nextActionDue: "2026-09-02", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "replied", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["Now open social post"], dateConfidence: "estimated", discoveredDate: "2026-08-15", lastVerifiedDate: "2026-08-23", createdAt: "2026-08-15", servicesInterest: ["website", "workflow"], sourceUrls: [], publicSocialLinks: [] },
+  ];
+  const demoDiscoveryCandidates = [
+    { id: "discovery-demo-1", businessName: "Lowcountry Service Company Demo", websiteUrl: "https://example.com", normalizedDomain: "example.com", city: "843 area code", serviceArea: "843 area code", industry: "Home services", sourceUrls: ["https://example.com"], sourceTitle: "Lowcountry Service Company Demo", sourceSnippet: "Sanitized demonstration result for local preview only.", fitLevel: "high", fitReasons: ["Website appears to rely on phone contact", "No online booking link found", "Mobile viewport setup was not found"], servicesInterest: ["website", "lead workflow"], launchSignals: ["Now open announcement"], dateConfidence: "unknown", publicPhone: null, publicEmail: null, publicContactFormUrl: null, lastVerifiedDate: "2026-08-27", tidalConflictReviewRequired: false, tidalConflictReviewStatus: "not_needed", checks: { hasViewport: false, hasForm: false, hasPhone: true, hasBooking: false } },
   ];
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -48,6 +52,130 @@
     element.textContent = message;
     element.hidden = !message;
   };
+
+  const showDiscoveryError = (message = "") => {
+    const element = $("#discovery-error");
+    element.textContent = message;
+    element.hidden = !message;
+  };
+
+  const discoveryChecks = (checks = {}) => [
+    ["Mobile setup", checks.hasViewport],
+    ["Request form", checks.hasForm],
+    ["Phone link", checks.hasPhone],
+    ["Contact path", checks.hasContactLink],
+    ["Online booking", checks.hasBooking],
+    ["Payment link", checks.hasPayment],
+  ].map(([label, found]) => `<span class="check-result ${found ? "check-found" : "check-missing"}">${found ? "Found" : "Not found"}: ${escapeHtml(label)}</span>`).join("");
+
+  function renderDiscoveryResults(meta = {}) {
+    const container = $("#discovery-results");
+    const candidates = state.discoveryCandidates;
+    if (!candidates.length) {
+      container.innerHTML = meta.searched ? '<div class="discovery-empty">No reviewable business websites were found in this bounded search. Try a broader area or different business types.</div>' : "";
+      return;
+    }
+    container.innerHTML = candidates.map((candidate) => `
+      <article class="discovery-card" data-candidate-id="${escapeHtml(candidate.id)}">
+        <div class="discovery-card-heading"><div><span class="pill">${escapeHtml(stageLabel(candidate.fitLevel))} fit</span>${candidate.tidalConflictReviewRequired ? '<span class="pill pill-amber">Tidal review required</span>' : ""}<h3>${escapeHtml(candidate.businessName)}</h3><p>${escapeHtml(candidate.normalizedDomain || candidate.city || "Public web result")}</p></div><button class="button button-primary" type="button" data-add-candidate="${escapeHtml(candidate.id)}">Add to Radar</button></div>
+        <p>${escapeHtml(candidate.sourceSnippet || "No search snippet was supplied.")}</p>
+        <div class="candidate-links"><a href="${escapeHtml(candidate.websiteUrl)}" target="_blank" rel="noreferrer">Open website</a>${(candidate.sourceUrls || []).map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open source</a>`).join("")}</div>
+        <h4>Observed opportunities</h4><ul>${(candidate.fitReasons || []).map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
+        ${candidate.launchSignals?.length ? `<p><strong>Launch signals:</strong> ${escapeHtml(candidate.launchSignals.join(", "))}</p>` : '<p class="muted"><strong>Launch date:</strong> Unknown; verify before treating this as a newly opened business.</p>'}
+        <div class="candidate-checks" aria-label="Automated website checks">${discoveryChecks(candidate.checks)}</div>
+        <p class="candidate-message" aria-live="polite"></p>
+      </article>`).join("");
+    $$('[data-add-candidate]', container).forEach((button) => button.addEventListener("click", () => addCandidateToRadar(button.dataset.addCandidate)));
+  }
+
+  const candidatePayload = (candidate) => {
+    const due = new Date();
+    due.setDate(due.getDate() + 2);
+    return {
+      businessName: candidate.businessName,
+      websiteUrl: candidate.websiteUrl,
+      city: candidate.city || "",
+      serviceArea: candidate.serviceArea || "",
+      industry: candidate.industry || "",
+      source: "new_business_radar",
+      sourceUrls: candidate.sourceUrls || [],
+      publicPhone: candidate.publicPhone || "",
+      publicEmail: candidate.publicEmail || "",
+      publicContactFormUrl: candidate.publicContactFormUrl || "",
+      publicSocialLinks: [],
+      stage: "new",
+      fitLevel: candidate.fitLevel || "medium",
+      fitReasons: candidate.fitReasons || [],
+      servicesInterest: candidate.servicesInterest || [],
+      formationDate: "",
+      openedDate: "",
+      dateConfidence: "unknown",
+      discoveredDate: new Date().toISOString().slice(0, 10),
+      launchSignals: candidate.launchSignals || [],
+      nextAction: candidate.tidalConflictReviewRequired ? "Complete Tidal conflict review" : "Review public sources and confirm fit",
+      nextActionDue: due.toISOString().slice(0, 10),
+      nextActionOwner: "Owner",
+      nextActionCompleted: false,
+      lastVerifiedDate: candidate.lastVerifiedDate || new Date().toISOString().slice(0, 10),
+      contactStatus: "not_contacted",
+      doNotContact: false,
+      doNotContactReason: "",
+      internalNotes: `Found through an owner-triggered public web search. Verify all details before outreach.${candidate.sourceSnippet ? ` Search evidence: ${candidate.sourceSnippet}` : ""}`,
+      archived: false,
+      tidalConflictReviewRequired: Boolean(candidate.tidalConflictReviewRequired),
+      tidalConflictReviewStatus: candidate.tidalConflictReviewRequired ? "pending" : "not_needed",
+      tidalConflictNotes: candidate.tidalConflictReviewRequired ? "Public search matched a marine-related term. Owner review required before outreach." : "",
+    };
+  };
+
+  async function addCandidateToRadar(id) {
+    const candidate = state.discoveryCandidates.find((item) => item.id === id);
+    if (!candidate) return;
+    const card = $(`[data-candidate-id="${CSS.escape(id)}"]`);
+    const button = $("[data-add-candidate]", card);
+    const message = $(".candidate-message", card);
+    button.disabled = true;
+    message.textContent = "Adding to the private workspace…";
+    try {
+      if (!isDemo()) await api(LEADS_API, { method: "POST", body: JSON.stringify(candidatePayload(candidate)) });
+      button.textContent = "Added";
+      message.textContent = candidate.tidalConflictReviewRequired
+        ? "Added with a pending Tidal conflict review. It is not ready for outreach."
+        : "Added to New Business Radar with a next review action.";
+      await load();
+    } catch (error) {
+      button.disabled = false;
+      message.textContent = error.status === 409 ? "A possible duplicate already exists. Review All Leads before adding another record." : error.message;
+    }
+  }
+
+  async function runDiscovery(event) {
+    event.preventDefault();
+    const button = $("#run-discovery");
+    const status = $("#discovery-status");
+    const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+    payload.businessTypes = String(payload.businessTypes || "").split(",").map((item) => item.trim()).filter(Boolean);
+    payload.maxResults = Number(payload.maxResults);
+    button.disabled = true;
+    showDiscoveryError();
+    status.textContent = "Searching public sources and checking business websites. This can take a few moments…";
+    $("#discovery-results").innerHTML = "";
+    try {
+      const body = isDemo()
+        ? { provider: "Sanitized local demo", candidates: demoDiscoveryCandidates, coverage: "One sanitized demonstration result." }
+        : await api(DISCOVERY_API, { method: "POST", body: JSON.stringify(payload) });
+      state.discoveryCandidates = body.candidates || [];
+      status.textContent = `${state.discoveryCandidates.length} candidate${state.discoveryCandidates.length === 1 ? "" : "s"} ready for review. ${body.coverage || ""}`;
+      renderDiscoveryResults({ searched: true });
+    } catch (error) {
+      state.discoveryCandidates = [];
+      status.textContent = "";
+      showDiscoveryError(error.message);
+      renderDiscoveryResults({ searched: true });
+    } finally {
+      button.disabled = false;
+    }
+  }
 
   function renderRows() {
     const tbody = $("#lead-rows");
@@ -298,6 +426,7 @@
 
   function setView(view) {
     state.view = view;
+    $("#discovery-panel").hidden = view !== "radar";
     $$(".view-tab").forEach((item) => {
       const active = item.dataset.view === view;
       item.classList.toggle("active", active);
@@ -317,6 +446,7 @@
   $("#cancel-lead").addEventListener("click", () => $("#lead-dialog").close());
   $("#close-detail").addEventListener("click", () => $("#detail-dialog").close());
   $("#lead-form").addEventListener("submit", saveLead);
+  $("#discovery-form").addEventListener("submit", runDiscovery);
   $$(".view-tab").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$('[data-summary]').forEach((button) => button.addEventListener("click", () => {
     $("#filters-form").reset();

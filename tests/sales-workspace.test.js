@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeBusinessName, normalizeDomain, serializeLead, syncLeadFromIntake, validateLeadInput } from "../functions/_lib/leads.js";
+import { analyzeBusinessPage, buildDiscoveryQueries, discoverBusinesses, safePublicUrl, validateDiscoveryInput } from "../functions/_lib/discovery.js";
 import { requireOwner } from "../functions/_lib/security.js";
 import { readFile } from "node:fs/promises";
 import { __test as leadApi, onRequestGet as getLeads, onRequestPost as postLead, onRequestPut as putLead } from "../functions/api/leads.js";
+import { onRequestPost as runDiscovery } from "../functions/owner/api/discovery.js";
 
 const leadRow = (overrides = {}) => ({
   id: "11111111-1111-4111-8111-111111111111",
@@ -60,6 +62,66 @@ const ownerEnv = (sql) => ({
 test("lead normalization supports obvious duplicate detection", () => {
   assert.equal(normalizeBusinessName("Harbor & Home, LLC"), "harbor and home llc");
   assert.equal(normalizeDomain("https://www.Example.com/about"), "example.com");
+});
+
+test("lead discovery accepts cities, ZIP codes, regions, and telephone area codes", () => {
+  for (const location of ["Charleston, SC", "29577", "Grand Strand", "843 area code"]) {
+    const input = validateDiscoveryInput({ location, focus: "both", maxResults: 10, businessTypes: ["contractor"] });
+    assert.equal(input.location, location);
+    assert.equal(buildDiscoveryQueries(input).every((query) => query.includes(location)), true);
+  }
+  assert.throws(() => validateDiscoveryInput({ location: "", maxResults: 10 }), /Search area is required/);
+  assert.throws(() => validateDiscoveryInput({ location: "Charleston", maxResults: 100 }), /Result limit is invalid/);
+});
+
+test("lead discovery blocks unsafe crawl targets", () => {
+  assert.equal(safePublicUrl("http://127.0.0.1/admin"), null);
+  assert.equal(safePublicUrl("http://192.168.1.10/"), null);
+  assert.equal(safePublicUrl("https://user:secret@example.com/"), null);
+  assert.equal(safePublicUrl("https://example.com/contact")?.hostname, "example.com");
+});
+
+test("website review reports visible evidence without unexplained scoring", () => {
+  const analysis = analyzeBusinessPage(`<!doctype html><html><head><title>Harbor Home Services | Charleston</title></head><body><a href="tel:+18435550199">Call</a><p>Request an estimate and pay your invoice.</p></body></html>`, "https://harbor.example/");
+  assert.equal(analysis.title, "Harbor Home Services | Charleston");
+  assert.equal(analysis.publicPhone, "+18435550199");
+  assert.ok(analysis.fitReasons.includes("Website appears to rely on phone contact"));
+  assert.ok(analysis.fitReasons.includes("No online booking link found"));
+  assert.ok(analysis.fitReasons.includes("Payment information appears separate from an online payment flow"));
+  assert.equal(analysis.checks.hasForm, false);
+});
+
+test("owner-triggered discovery searches public results and returns reviewable candidates", async () => {
+  const searched = [];
+  const result = await discoverBusinesses({ location: "843 area code", businessTypes: ["home services"], focus: "both", maxResults: 5 }, {
+    __TEST_SEARCH: async (query) => {
+      searched.push(query);
+      return [{ title: "Harbor Home Services | Charleston", url: "https://harbor.example/", description: "Now open home services company in the 843 area code." }];
+    },
+    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><title>Harbor Home Services | Charleston</title></head><body><a href="tel:+18435550199">Call us</a></body></html>`, { headers: { "content-type": "text/html" } }),
+  });
+  assert.equal(searched.length, 3);
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].businessName, "Harbor Home Services");
+  assert.equal(result.candidates[0].city, "843 area code");
+  assert.ok(result.candidates[0].launchSignals.includes("Now open announcement"));
+  assert.ok(result.candidates[0].fitReasons.includes("Website appears to rely on phone contact"));
+  assert.match(result.coverage, /not an exhaustive market list/);
+});
+
+test("discovery API is owner-only and requires configured search data", async () => {
+  const unauthorized = await runDiscovery({
+    request: new Request("https://example.test/owner/api/discovery", { method: "POST", headers: { origin: "https://example.test", "content-type": "application/json" }, body: JSON.stringify({ location: "Charleston", maxResults: 5 }) }),
+    env: { ENVIRONMENT: "production", PUBLIC_SITE_URL: "https://example.test" },
+  });
+  assert.equal(unauthorized.status, 503);
+
+  const unconfigured = await runDiscovery({
+    request: new Request("https://example.test/owner/api/discovery", { method: "POST", headers: { origin: "https://example.test", "content-type": "application/json" }, body: JSON.stringify({ location: "Charleston", maxResults: 5 }) }),
+    env: ownerEnv(async () => []),
+  });
+  assert.equal(unconfigured.status, 503);
+  assert.match((await unconfigured.json()).error, /BRAVE_SEARCH_API_KEY/);
 });
 
 test("lead input rejects invalid stage and unsafe website URL", () => {
@@ -150,19 +212,25 @@ test("owner workspace is excluded from discovery and marked private", async () =
 });
 
 test("owner workspace keeps its browser API inside the Access-protected route", async () => {
-  const [client, protectedRoute, html] = await Promise.all([
+  const [client, protectedRoute, discoveryRoute, html] = await Promise.all([
     readFile(new URL("../owner/leads/leads.js", import.meta.url), "utf8"),
     readFile(new URL("../functions/owner/api/leads.js", import.meta.url), "utf8"),
+    readFile(new URL("../functions/owner/api/discovery.js", import.meta.url), "utf8"),
     readFile(new URL("../owner/leads/index.html", import.meta.url), "utf8"),
   ]);
   assert.match(client, /const LEADS_API = "\/owner\/api\/leads"/);
+  assert.match(client, /const DISCOVERY_API = "\/owner\/api\/discovery"/);
   assert.doesNotMatch(client, /api\([`"]\/api\/leads/);
   assert.match(client, /setField\(form, "id", lead\?\.id \|\| ""\)/);
   assert.match(protectedRoute, /from "\.\.\/\.\.\/api\/leads\.js"/);
+  assert.match(discoveryRoute, /requireOwner/);
+  assert.match(discoveryRoute, /discoverBusinesses/);
   assert.match(html, /id="cancel-lead" type="button"/);
   assert.match(html, /id="close-lead" type="button"/);
   assert.match(html, /name="tidalConflictReviewStatus"/);
   assert.match(html, /name="archived"/);
+  assert.match(html, /id="discovery-form"/);
+  assert.match(html, /Search Public Web/);
 });
 
 test("lead list views, filters, and date sorting are deterministic", () => {
@@ -175,6 +243,14 @@ test("lead list views, filters, and date sorting are deterministic", () => {
   assert.deepEqual(leadApi.applyView(leads, "all", new URLSearchParams("archived=only")).map((lead) => lead.id), ["c"]);
   assert.equal(leadApi.rowMatch(leads[0], new URLSearchParams("conflict=pending&services=work")), true);
   assert.deepEqual(leadApi.sortLeads(leads.slice(0, 2), "due").map((lead) => lead.id), ["b", "a"]);
+});
+
+test("New Business Radar supports owner-selected locations instead of a hard-coded territory", () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const leads = [
+    { id: "outside-original-area", businessName: "Area Search Demo", city: "Savannah", serviceArea: "912 area code", archived: false, stage: "new", fitLevel: "medium", contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", discoveredDate: today, servicesInterest: [] },
+  ];
+  assert.deepEqual(leadApi.applyView(leads, "radar", new URLSearchParams()).map((lead) => lead.id), ["outside-original-area"]);
 });
 
 test("lead API returns private queue counts and pipeline totals", async () => {

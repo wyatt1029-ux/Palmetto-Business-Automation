@@ -24,6 +24,10 @@ passwords, payment details, or client data in the initial message.
   Cloudflare Access application for the owner path with the same `POLICY_AUD`, `TEAM_DOMAIN`, and
   `OWNER_EMAIL` values used by the existing owner APIs before exposing the route. The legacy
   `/api/leads` handler also requires a valid Access JWT and cannot return data publicly.
+- `/owner/api/discovery` uses the same Access JWT, owner-email allowlist, and same-origin checks.
+  Public-site inspection rejects local/private hosts, non-HTTP(S) targets, credentials in URLs, and
+  nonstandard ports; it also limits request duration and inspected HTML size. The Brave Search API
+  key is a Cloudflare Pages secret and is never returned to the browser.
 - Stripe webhook signatures are verified, timestamps are limited to five minutes, payload sizes are
   bounded, and processed event IDs are deduplicated.
 - Stripe invoice and subscription creation uses deterministic idempotency keys and reuses an existing hosted invoice when one has already been created for the approved SOW.
