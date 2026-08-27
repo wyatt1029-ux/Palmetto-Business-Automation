@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from "jose";
 
 const jwksByDomain = new Map();
 
@@ -118,6 +118,25 @@ export async function requireOwner(request, env) {
     return email;
   } catch (error) {
     if (error.status) throw error;
+    let claims = {};
+    try {
+      const payload = decodeJwt(token);
+      claims = {
+        tokenIssuer: payload.iss,
+        tokenAudience: payload.aud,
+        tokenExpiresAt: payload.exp,
+      };
+    } catch {
+      claims = { tokenStructure: "invalid" };
+    }
+    console.error("[owner-auth] JWT verification failed", {
+      code: error.code,
+      name: error.name,
+      message: error.message,
+      expectedIssuer: env.TEAM_DOMAIN.replace(/\/$/, ""),
+      expectedAudience: env.POLICY_AUD,
+      ...claims,
+    });
     throw Object.assign(new Error("Owner session is invalid or expired."), { status: 401 });
   }
 }
