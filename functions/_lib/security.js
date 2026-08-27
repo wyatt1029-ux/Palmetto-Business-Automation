@@ -106,9 +106,10 @@ export async function requireOwner(request, env) {
   if (!token) throw Object.assign(new Error("Owner authentication is required."), { status: 401 });
   try {
     const issuer = env.TEAM_DOMAIN.replace(/\/$/, "");
+    const audiences = env.POLICY_AUD.split(",").map((value) => value.trim()).filter(Boolean);
     const { payload } = await jwtVerify(token, remoteKeys(issuer), {
       issuer,
-      audience: env.POLICY_AUD,
+      audience: audiences,
     });
     const email = String(payload.email || "").toLowerCase();
     const allowed = env.OWNER_EMAIL.split(",").map((value) => value.trim().toLowerCase());
@@ -134,7 +135,7 @@ export async function requireOwner(request, env) {
       name: error.name,
       message: error.message,
       expectedIssuer: env.TEAM_DOMAIN.replace(/\/$/, ""),
-      expectedAudience: env.POLICY_AUD,
+      expectedAudience: env.POLICY_AUD.split(",").map((value) => value.trim()).filter(Boolean),
       ...claims,
     });
     throw Object.assign(new Error("Owner session is invalid or expired."), { status: 401 });
