@@ -42,13 +42,70 @@
 
       <section class="workspace-panel" aria-labelledby="list-title">
         <div class="panel-heading"><div><p class="eyebrow">Private records</p><h2 id="list-title">Today &amp; Next Up</h2></div><span class="record-count" id="record-count">Loading…</span></div>
-        <form class="filters" id="filters-form"><label>Search<input id="search" name="search" type="search" placeholder="Business, city, domain, notes" /></label><label>Stage<select id="stage-filter" name="stage"><option value="">All stages</option><option value="new">New</option><option value="contacted">Contacted</option><option value="discovery_scheduled">Discovery Scheduled</option><option value="qualified">Qualified</option><option value="scope_sent">Scope Sent</option><option value="approved">Approved</option><option value="paid_active">Paid / Active</option><option value="lost">Lost</option><option value="not_a_fit">Not a Fit</option></select></label><label>Fit<select id="fit-filter" name="fit"><option value="">Any fit</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label><label>Sort<select id="sort-filter" name="sort"><option value="due">Next action date</option><option value="activity">Last activity</option><option value="created">Created date</option><option value="verified">Last verified</option></select></label><label class="check-filter"><input id="overdue-filter" name="overdue" type="checkbox" /> Next action overdue</label></form>
+        <form class="filters" id="filters-form">
+          <label class="filter-search">Search<input id="search" name="search" type="search" placeholder="Business, city, domain, notes" /></label>
+          <label>Stage<select id="stage-filter" name="stage"><option value="">All stages</option><option value="new">New</option><option value="contacted">Contacted</option><option value="discovery_scheduled">Discovery Scheduled</option><option value="qualified">Qualified</option><option value="scope_sent">Scope Sent</option><option value="approved">Approved</option><option value="paid_active">Paid / Active</option><option value="lost">Lost</option><option value="not_a_fit">Not a Fit</option></select></label>
+          <label>Source<select id="source-filter" name="source"><option value="">All sources</option><option value="researched">Researched</option><option value="new_business_radar">New Business Radar</option><option value="website_inquiry">Website inquiry</option><option value="referral">Referral</option><option value="other">Other</option></select></label>
+          <label>Fit<select id="fit-filter" name="fit"><option value="">Any fit</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+          <label>Conflict<select id="conflict-filter" name="conflict"><option value="">Any status</option><option value="pending">Pending</option><option value="cleared">Cleared</option><option value="declined">Declined</option><option value="not_needed">Not needed</option></select></label>
+          <label>Contact<select id="contact-filter" name="contact"><option value="">Any status</option><option value="not_contacted">Not contacted</option><option value="attempted">Attempted</option><option value="replied">Replied</option><option value="connected">Connected</option><option value="do_not_contact">Do not contact</option></select></label>
+          <label>City / area<input id="city-filter" name="city" /></label>
+          <label>Industry<input id="industry-filter" name="industry" /></label>
+          <label>Service interest<input id="services-filter" name="services" /></label>
+          <label>Archived<select id="archived-filter" name="archived"><option value="">Active only</option><option value="all">Active + archived</option><option value="only">Archived only</option></select></label>
+          <label>Sort<select id="sort-filter" name="sort"><option value="due">Next action date</option><option value="activity">Last activity</option><option value="created">Created date</option><option value="verified">Last verified</option></select></label>
+          <label class="check-filter"><input id="overdue-filter" name="overdue" type="checkbox" /> Next action overdue</label>
+          <button class="button button-secondary clear-filters" id="clear-filters" type="button">Clear filters</button>
+        </form>
+        <p class="form-error workspace-error" id="workspace-error" role="alert" hidden></p>
         <div class="table-wrap"><table><thead><tr><th>Business</th><th>Why PBA Fits</th><th>Next Action</th><th>Due</th><th>Stage</th><th>Conflict Status</th></tr></thead><tbody id="lead-rows"><tr><td colspan="6" class="empty-state">Loading private records…</td></tr></tbody></table></div>
       </section>
       <p class="workspace-note">Lead data is private and owner-only. Public pages, sitemap, and client views never include these records.</p>
     </main>
 
-    <dialog class="lead-dialog" id="lead-dialog" aria-labelledby="dialog-title"><form method="dialog" id="lead-form"><div class="dialog-header"><div><p class="eyebrow">Private lead record</p><h2 id="dialog-title">Add Lead</h2></div><button class="icon-button" value="cancel" aria-label="Close dialog">×</button></div><div class="dialog-grid"><label>Business name<input name="businessName" required maxlength="200" /></label><label>Website URL<input name="websiteUrl" type="url" placeholder="https://example.com" /></label><label>City<input name="city" maxlength="120" /></label><label>Industry<input name="industry" maxlength="160" /></label><label>Source<select name="source"><option value="researched">Researched</option><option value="new_business_radar">New Business Radar</option><option value="website_inquiry">Website inquiry</option><option value="referral">Referral</option></select></label><label>Fit<select name="fitLevel"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label><label class="span-two">Why PBA may fit<textarea name="fitReasons" placeholder="No clear service-request form, phone only, etc."></textarea></label><label>Next action<input name="nextAction" placeholder="Review website and draft note" /></label><label>Due date<input name="nextActionDue" type="date" /></label><label class="span-two">Research notes<textarea name="internalNotes"></textarea></label></div><p class="form-error" id="lead-form-error" role="alert"></p><div class="dialog-actions"><button class="button button-secondary" value="cancel">Cancel</button><button class="button button-primary" id="save-lead" value="default">Save lead</button></div></form></dialog>
+    <dialog class="lead-dialog" id="lead-dialog" aria-labelledby="dialog-title">
+      <form id="lead-form">
+        <input name="id" type="hidden" />
+        <div class="dialog-header"><div><p class="eyebrow">Private lead record</p><h2 id="dialog-title">Add Lead</h2></div><button class="icon-button" id="close-lead" type="button" aria-label="Close dialog">×</button></div>
+        <div class="dialog-grid">
+          <label>Business name<input name="businessName" required maxlength="200" /></label>
+          <label>Website URL<input name="websiteUrl" type="url" maxlength="500" placeholder="https://example.com" /></label>
+          <label>City<input name="city" maxlength="120" /></label>
+          <label>Service area<input name="serviceArea" maxlength="160" /></label>
+          <label>Industry<input name="industry" maxlength="160" /></label>
+          <label>Source<select name="source"><option value="researched">Researched</option><option value="new_business_radar">New Business Radar</option><option value="website_inquiry">Website inquiry</option><option value="referral">Referral</option><option value="other">Other</option></select></label>
+          <label>Stage<select name="stage"><option value="new">New</option><option value="contacted">Contacted</option><option value="discovery_scheduled">Discovery Scheduled</option><option value="qualified">Qualified</option><option value="scope_sent">Scope Sent</option><option value="approved">Approved</option><option value="paid_active">Paid / Active</option><option value="lost">Lost</option><option value="not_a_fit">Not a Fit</option><option value="archived">Archived</option></select></label>
+          <label>Fit<select name="fitLevel"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></label>
+          <label>Public phone<input name="publicPhone" maxlength="80" /></label>
+          <label>Public email<input name="publicEmail" type="email" maxlength="254" /></label>
+          <label class="span-two">Public contact-form URL<input name="publicContactFormUrl" type="url" maxlength="500" /></label>
+          <label class="span-two">Public social links <small>Comma-separated URLs</small><textarea name="publicSocialLinks"></textarea></label>
+          <label class="span-two">Public research sources <small>Comma-separated URLs</small><textarea name="sourceUrls"></textarea></label>
+          <label class="span-two">Why PBA may fit <small>Comma-separated, evidence-based reasons</small><textarea name="fitReasons" placeholder="No clear service-request form, phone only"></textarea></label>
+          <label class="span-two">Services of interest <small>Comma-separated</small><input name="servicesInterest" /></label>
+          <label>Formation date<input name="formationDate" type="date" /></label>
+          <label>Opened date<input name="openedDate" type="date" /></label>
+          <label>Date confidence<select name="dateConfidence"><option value="unknown">Unknown</option><option value="estimated">Estimated</option><option value="confirmed">Confirmed</option></select></label>
+          <label>Discovered date<input name="discoveredDate" type="date" /></label>
+          <label class="span-two">Launch signals <small>Comma-separated</small><input name="launchSignals" /></label>
+          <label>Last verified<input name="lastVerifiedDate" type="date" /></label>
+          <label>Contact status<select name="contactStatus"><option value="not_contacted">Not contacted</option><option value="attempted">Attempted</option><option value="replied">Replied</option><option value="connected">Connected</option><option value="do_not_contact">Do not contact</option></select></label>
+          <label>Next action<input name="nextAction" maxlength="500" placeholder="Review website and draft note" /></label>
+          <label>Due date<input name="nextActionDue" type="date" /></label>
+          <label>Next-action owner<input name="nextActionOwner" maxlength="254" /></label>
+          <label class="checkbox-field"><input name="nextActionCompleted" type="checkbox" /> Next action completed</label>
+          <label class="checkbox-field span-two"><input name="tidalConflictReviewRequired" type="checkbox" /> Tidal conflict review required</label>
+          <label>Conflict status<select name="tidalConflictReviewStatus"><option value="not_needed">Not needed</option><option value="pending">Pending</option><option value="cleared">Cleared</option><option value="declined">Declined</option></select></label>
+          <label>Conflict notes<textarea name="tidalConflictNotes"></textarea></label>
+          <label class="checkbox-field span-two"><input name="doNotContact" type="checkbox" /> Do not contact</label>
+          <label class="span-two">Do-not-contact reason<input name="doNotContactReason" maxlength="500" /></label>
+          <label class="checkbox-field span-two"><input name="archived" type="checkbox" /> Archived</label>
+          <label class="span-two">Research notes<textarea name="internalNotes" maxlength="8000"></textarea></label>
+        </div>
+        <p class="form-error" id="lead-form-error" role="alert"></p>
+        <div class="dialog-actions"><button class="button button-secondary" id="cancel-lead" type="button">Cancel</button><button class="button button-primary" id="save-lead" type="submit">Save lead</button></div>
+      </form>
+    </dialog>
 
     <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-header"><div><p class="eyebrow">Lead detail</p><h2 id="detail-title">Lead</h2></div><button class="icon-button" id="close-detail" type="button" aria-label="Close lead detail">×</button></div><div id="detail-content"></div></dialog>
     <script src="/owner/leads/leads.js" defer></script>

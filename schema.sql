@@ -151,7 +151,7 @@ create table if not exists leads (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create unique index if not exists leads_name_domain_unique_idx on leads (normalized_business_name, coalesce(normalized_domain, ''));
+create index if not exists leads_name_domain_lookup_idx on leads (normalized_business_name, coalesce(normalized_domain, ''));
 create index if not exists leads_queue_idx on leads (archived, next_action_completed, next_action_due);
 create index if not exists leads_stage_idx on leads (stage, updated_at desc);
 create index if not exists leads_radar_idx on leads (discovered_date, fit_level, contact_status);

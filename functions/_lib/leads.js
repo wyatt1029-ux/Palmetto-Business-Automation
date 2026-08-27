@@ -1,6 +1,9 @@
 export const LEAD_STAGES = ["new", "contacted", "discovery_scheduled", "qualified", "scope_sent", "approved", "paid_active", "lost", "not_a_fit", "archived"];
 export const FIT_LEVELS = ["high", "medium", "low"];
 export const CONFLICT_STATUSES = ["not_needed", "pending", "cleared", "declined"];
+export const CONTACT_STATUSES = ["not_contacted", "attempted", "replied", "connected", "do_not_contact"];
+export const DATE_CONFIDENCE_LEVELS = ["confirmed", "estimated", "unknown"];
+export const LEAD_SOURCES = ["researched", "new_business_radar", "website_inquiry", "referral", "other"];
 export const ACTIVITY_TYPES = ["research_added", "call_attempted", "email_drafted", "email_sent_manually", "replied", "discovery_scheduled", "discovery_completed", "scope_sent", "sow_accepted", "payment_received", "lost", "not_a_fit", "internal_note", "inquiry_received"];
 
 export const normalizeBusinessName = (value) => String(value || "")
@@ -23,36 +26,86 @@ export const cleanLeadText = (value, max = 2_000) => String(value ?? "").replace
 export const asList = (value, max = 40) => (Array.isArray(value) ? value : String(value || "").split(","))
   .map((item) => cleanLeadText(item, 240)).filter(Boolean).slice(0, max);
 
+const textValue = (value, label, max) => {
+  const clean = String(value ?? "").replaceAll("\u0000", "").trim();
+  if (clean.length > max) throw Object.assign(new Error(`${label} is too long.`), { status: 422 });
+  return clean;
+};
+
+const validDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+};
+
+const validHttpUrl = (value) => {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function validateLeadInput(data = {}, { partial = false } = {}) {
   const result = {};
   const required = (key, label, max = 240) => {
     if (partial && data[key] === undefined) return;
-    const value = cleanLeadText(data[key], max);
+    const value = textValue(data[key], label, max);
     if (!value && !partial) throw Object.assign(new Error(`${label} is required.`), { status: 422 });
     result[key] = value;
   };
-  const optional = (key, max = 240) => {
+  const optional = (key, label, max = 240) => {
     if (partial && data[key] === undefined) return;
-    const value = cleanLeadText(data[key], max);
-    if (value) result[key] = value;
+    result[key] = textValue(data[key], label, max) || null;
   };
   required("businessName", "Business name", 200);
   if (data.websiteUrl !== undefined || !partial) {
-    const websiteUrl = cleanLeadText(data.websiteUrl, 500);
-    if (websiteUrl && !/^https?:\/\/[^\s]+$/i.test(websiteUrl)) throw Object.assign(new Error("Website URL is invalid."), { status: 422 });
+    const websiteUrl = textValue(data.websiteUrl, "Website URL", 500);
+    if (websiteUrl && !validHttpUrl(websiteUrl)) throw Object.assign(new Error("Website URL is invalid."), { status: 422 });
     result.websiteUrl = websiteUrl || null;
     result.normalizedDomain = normalizeDomain(websiteUrl);
   }
-  for (const [key, max] of [["city", 120], ["serviceArea", 160], ["industry", 160], ["source", 80], ["nextAction", 500], ["nextActionOwner", 254], ["doNotContactReason", 500], ["tidalConflictNotes", 2_000], ["internalNotes", 8_000]]) optional(key, max);
-  if (data.stage !== undefined && !LEAD_STAGES.includes(data.stage)) throw Object.assign(new Error("Lead stage is invalid."), { status: 422 });
-  if (data.fitLevel !== undefined && !FIT_LEVELS.includes(data.fitLevel)) throw Object.assign(new Error("Fit level is invalid."), { status: 422 });
-  if (data.tidalConflictReviewStatus !== undefined && !CONFLICT_STATUSES.includes(data.tidalConflictReviewStatus)) throw Object.assign(new Error("Conflict-review status is invalid."), { status: 422 });
-  if (data.tidalConflictReviewStatus !== undefined) result.tidalConflictReviewStatus = data.tidalConflictReviewStatus;
-  if (data.contactStatus !== undefined && !["not_contacted", "attempted", "replied", "connected", "do_not_contact"].includes(data.contactStatus)) throw Object.assign(new Error("Contact status is invalid."), { status: 422 });
-  if (data.nextActionDue !== undefined && data.nextActionDue && !/^\d{4}-\d{2}-\d{2}$/.test(data.nextActionDue)) throw Object.assign(new Error("Next-action date is invalid."), { status: 422 });
-  if (data.lastVerifiedDate !== undefined && data.lastVerifiedDate && !/^\d{4}-\d{2}-\d{2}$/.test(data.lastVerifiedDate)) throw Object.assign(new Error("Last-verified date is invalid."), { status: 422 });
-  for (const key of ["sourceUrls", "publicSocialLinks", "fitReasons", "servicesInterest", "launchSignals"]) if (data[key] !== undefined) result[key] = asList(data[key]);
-  for (const key of ["tidalConflictReviewRequired", "doNotContact", "archived", "nextActionCompleted"]) if (data[key] !== undefined) result[key] = Boolean(data[key]);
+  for (const [key, label, max] of [
+    ["city", "City", 120], ["serviceArea", "Service area", 160], ["industry", "Industry", 160],
+    ["nextAction", "Next action", 500], ["nextActionOwner", "Next-action owner", 254],
+    ["publicPhone", "Public phone", 80], ["publicEmail", "Public email", 254],
+    ["publicContactFormUrl", "Public contact-form URL", 500], ["doNotContactReason", "Do-not-contact reason", 500],
+    ["tidalConflictNotes", "Conflict-review notes", 2_000], ["internalNotes", "Internal notes", 8_000],
+  ]) optional(key, label, max);
+  for (const [key, allowed, label] of [
+    ["stage", LEAD_STAGES, "Lead stage"], ["fitLevel", FIT_LEVELS, "Fit level"],
+    ["source", LEAD_SOURCES, "Lead source"], ["contactStatus", CONTACT_STATUSES, "Contact status"],
+    ["dateConfidence", DATE_CONFIDENCE_LEVELS, "Date confidence"],
+    ["tidalConflictReviewStatus", CONFLICT_STATUSES, "Conflict-review status"],
+  ]) {
+    if (data[key] === undefined) continue;
+    if (!allowed.includes(data[key])) throw Object.assign(new Error(`${label} is invalid.`), { status: 422 });
+    result[key] = data[key];
+  }
+  for (const [key, label] of [["nextActionDue", "Next-action date"], ["lastVerifiedDate", "Last-verified date"], ["formationDate", "Formation date"], ["openedDate", "Opened date"], ["discoveredDate", "Discovered date"]]) {
+    if (data[key] === undefined) continue;
+    const value = textValue(data[key], label, 10);
+    if (value && !validDate(value)) throw Object.assign(new Error(`${label} is invalid.`), { status: 422 });
+    result[key] = value || null;
+  }
+  if (result.publicEmail && !emailPattern.test(result.publicEmail)) throw Object.assign(new Error("Public email is invalid."), { status: 422 });
+  if (result.publicContactFormUrl && !validHttpUrl(result.publicContactFormUrl)) throw Object.assign(new Error("Public contact-form URL is invalid."), { status: 422 });
+  for (const key of ["sourceUrls", "publicSocialLinks"]) {
+    if (data[key] === undefined) continue;
+    const values = asList(data[key]);
+    if (values.some((value) => !validHttpUrl(value))) throw Object.assign(new Error(`${key === "sourceUrls" ? "Source" : "Social"} URL is invalid.`), { status: 422 });
+    result[key] = values;
+  }
+  for (const key of ["fitReasons", "servicesInterest", "launchSignals"]) if (data[key] !== undefined) result[key] = asList(data[key]);
+  for (const key of ["tidalConflictReviewRequired", "doNotContact", "archived", "nextActionCompleted"]) {
+    if (data[key] === undefined) continue;
+    if (typeof data[key] !== "boolean") throw Object.assign(new Error(`${key} must be true or false.`), { status: 422 });
+    result[key] = data[key];
+  }
   return result;
 }
 
@@ -80,7 +133,10 @@ export async function syncLeadFromIntake(sql, { id, customerNumber, organization
   const businessName = cleanLeadText(organization, 200);
   const normalized = normalizeBusinessName(businessName);
   const rows = await sql`
-    select id from leads where normalized_business_name = ${normalized} and normalized_domain is null limit 1
+    select id from leads
+    where normalized_business_name = ${normalized} and archived = false
+    order by updated_at desc
+    limit 1
   `;
   let leadId = rows[0]?.id;
   if (!leadId) {
