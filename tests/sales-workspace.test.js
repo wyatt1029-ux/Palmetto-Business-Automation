@@ -98,7 +98,7 @@ test("owner-triggered discovery searches public results and returns reviewable c
       searched.push(query);
       return [{ title: "Harbor Home Services | Charleston", url: "https://harbor.example/", description: "Now open home services company in the 843 area code." }];
     },
-    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><title>Harbor Home Services | Charleston</title></head><body><a href="tel:+18435550199">Call us</a></body></html>`, { headers: { "content-type": "text/html" } }),
+    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><title>Harbor Home Services | Charleston</title></head><body><p>Now open in Charleston.</p><a href="tel:+18435550199">Call us</a></body></html>`, { headers: { "content-type": "text/html" } }),
   });
   assert.equal(searched.length, 3);
   assert.equal(result.candidates.length, 1);
@@ -106,7 +106,17 @@ test("owner-triggered discovery searches public results and returns reviewable c
   assert.equal(result.candidates[0].city, "843 area code");
   assert.ok(result.candidates[0].launchSignals.includes("Now open announcement"));
   assert.ok(result.candidates[0].fitReasons.includes("Website appears to rely on phone contact"));
+  assert.deepEqual(result.candidates[0].sourceUrls, ["https://harbor.example/"]);
+  assert.equal("sourceSnippet" in result.candidates[0], false);
   assert.match(result.coverage, /not an exhaustive market list/);
+});
+
+test("lead discovery does not persist search-result content or unverified websites", async () => {
+  const result = await discoverBusinesses({ location: "Charleston", focus: "new_business", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [{ title: "Search Result Name", url: "https://unreachable.example/", description: "Grand opening search snippet" }],
+    __TEST_FETCH: async () => new Response("Unavailable", { status: 503, headers: { "content-type": "text/plain" } }),
+  });
+  assert.deepEqual(result.candidates, []);
 });
 
 test("discovery API is owner-only and requires configured search data", async () => {

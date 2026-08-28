@@ -133,6 +133,8 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     publicPhone: text(phone, 80) || null,
     publicEmail: text(email, 254) || null,
     publicContactFormUrl: safePublicUrl(contactFormUrl)?.href || null,
+    launchSignals: launchSignalsFor(stripTags(source)),
+    marineContext: marinePattern.test(stripTags(source)),
     checks: { hasViewport, hasForm, hasPhone, hasEmail, hasContactLink, hasBooking, hasPayment },
   };
 }
@@ -205,27 +207,26 @@ export async function discoverBusinesses(input, env = {}) {
 
   const candidates = (await Promise.all(searchResults.map(async (result) => {
     const inspected = await inspectedSite(result.url, fetchImpl);
-    const combinedEvidence = `${result.title || ""} ${result.description || ""}`;
-    const analysis = inspected?.analysis || { fitReasons: ["Website review could not be completed"], servicesInterest: ["website review"], checks: {} };
-    const businessName = cleanBusinessName(analysis.title || result.title);
+    // Brave results are discovery pointers only. Persistable candidate fields below
+    // come from the independently fetched business website, not the search result.
+    if (!inspected) return null;
+    const analysis = inspected.analysis;
+    const businessName = cleanBusinessName(analysis.title || normalizeDomain(inspected.url).split(".")[0]);
     const fitReasons = analysis.fitReasons.length ? analysis.fitReasons : ["No obvious website or workflow gap was found in the automated check"];
-    const launchSignals = launchSignalsFor(combinedEvidence);
-    const marine = marinePattern.test(`${businessName} ${result.description || ""}`);
+    const marine = analysis.marineContext || marinePattern.test(businessName);
     return {
       id: crypto.randomUUID(),
       businessName,
-      websiteUrl: inspected ? new URL(inspected.url).origin : new URL(result.url).origin,
-      normalizedDomain: normalizeDomain(inspected?.url || result.url),
+      websiteUrl: new URL(inspected.url).origin,
+      normalizedDomain: normalizeDomain(inspected.url),
       city: criteria.location,
       serviceArea: criteria.location,
       industry: criteria.businessTypes.join(", ") || null,
-      sourceUrls: [result.url],
-      sourceTitle: text(result.title, 300),
-      sourceSnippet: text(result.description, 1_000),
+      sourceUrls: [inspected.url],
       fitLevel: fitReasons.length >= 3 ? "high" : fitReasons.length ? "medium" : "low",
       fitReasons,
       servicesInterest: analysis.servicesInterest,
-      launchSignals,
+      launchSignals: analysis.launchSignals,
       dateConfidence: "unknown",
       publicPhone: analysis.publicPhone,
       publicEmail: analysis.publicEmail,
@@ -235,14 +236,14 @@ export async function discoverBusinesses(input, env = {}) {
       tidalConflictReviewStatus: marine ? "pending" : "not_needed",
       checks: analysis.checks,
     };
-  }))).filter((candidate) => candidate.businessName && candidate.normalizedDomain);
+  }))).filter((candidate) => candidate?.businessName && candidate.normalizedDomain);
 
   return {
     provider: "Brave Search API",
     criteria,
     queries,
     candidates,
-    coverage: `Reviewed ${searchResults.length} public search result${searchResults.length === 1 ? "" : "s"}; results are bounded and are not an exhaustive market list.`,
+    coverage: `Used ${searchResults.length} search match${searchResults.length === 1 ? "" : "es"} transiently and independently checked ${candidates.length} public business website${candidates.length === 1 ? "" : "s"}. Results are bounded and are not an exhaustive market list.`,
   };
 }
 

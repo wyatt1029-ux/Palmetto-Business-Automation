@@ -11,7 +11,7 @@
     { id: "demo-3", businessName: "Palmetto Bookkeeping Demo", city: "Myrtle Beach", serviceArea: "Grand Strand", industry: "Professional services", source: "website_inquiry", stage: "discovery_scheduled", fitLevel: "high", fitReasons: ["Payment or intake workflow may be fragmented"], nextAction: "Prepare discovery notes", nextActionDue: "2026-09-02", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "replied", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["Now open social post"], dateConfidence: "estimated", discoveredDate: "2026-08-15", lastVerifiedDate: "2026-08-23", createdAt: "2026-08-15", servicesInterest: ["website", "workflow"], sourceUrls: [], publicSocialLinks: [] },
   ];
   const demoDiscoveryCandidates = [
-    { id: "discovery-demo-1", businessName: "Lowcountry Service Company Demo", websiteUrl: "https://example.com", normalizedDomain: "example.com", city: "843 area code", serviceArea: "843 area code", industry: "Home services", sourceUrls: ["https://example.com"], sourceTitle: "Lowcountry Service Company Demo", sourceSnippet: "Sanitized demonstration result for local preview only.", fitLevel: "high", fitReasons: ["Website appears to rely on phone contact", "No online booking link found", "Mobile viewport setup was not found"], servicesInterest: ["website", "lead workflow"], launchSignals: ["Now open announcement"], dateConfidence: "unknown", publicPhone: null, publicEmail: null, publicContactFormUrl: null, lastVerifiedDate: "2026-08-27", tidalConflictReviewRequired: false, tidalConflictReviewStatus: "not_needed", checks: { hasViewport: false, hasForm: false, hasPhone: true, hasBooking: false } },
+    { id: "discovery-demo-1", businessName: "Lowcountry Service Company Demo", websiteUrl: "https://example.com", normalizedDomain: "example.com", city: "843 area code", serviceArea: "843 area code", industry: "Home services", sourceUrls: ["https://example.com"], fitLevel: "high", fitReasons: ["Website appears to rely on phone contact", "No online booking link found", "Mobile viewport setup was not found"], servicesInterest: ["website", "lead workflow"], launchSignals: ["Now open announcement"], dateConfidence: "unknown", publicPhone: null, publicEmail: null, publicContactFormUrl: null, lastVerifiedDate: "2026-08-27", tidalConflictReviewRequired: false, tidalConflictReviewStatus: "not_needed", checks: { hasViewport: false, hasForm: false, hasPhone: true, hasBooking: false } },
   ];
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -78,7 +78,7 @@
     container.innerHTML = candidates.map((candidate) => `
       <article class="discovery-card" data-candidate-id="${escapeHtml(candidate.id)}">
         <div class="discovery-card-heading"><div><span class="pill">${escapeHtml(stageLabel(candidate.fitLevel))} fit</span>${candidate.tidalConflictReviewRequired ? '<span class="pill pill-amber">Tidal review required</span>' : ""}<h3>${escapeHtml(candidate.businessName)}</h3><p>${escapeHtml(candidate.normalizedDomain || candidate.city || "Public web result")}</p></div><button class="button button-primary" type="button" data-add-candidate="${escapeHtml(candidate.id)}">Add to Radar</button></div>
-        <p>${escapeHtml(candidate.sourceSnippet || "No search snippet was supplied.")}</p>
+        <p>Checked directly from this business website on ${escapeHtml(formatDate(candidate.lastVerifiedDate))}. Search-provider results are temporary and are not saved to the CRM.</p>
         <div class="candidate-links"><a href="${escapeHtml(candidate.websiteUrl)}" target="_blank" rel="noreferrer">Open website</a>${(candidate.sourceUrls || []).map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open source</a>`).join("")}</div>
         <h4>Observed opportunities</h4><ul>${(candidate.fitReasons || []).map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
         ${candidate.launchSignals?.length ? `<p><strong>Launch signals:</strong> ${escapeHtml(candidate.launchSignals.join(", "))}</p>` : '<p class="muted"><strong>Launch date:</strong> Unknown; verify before treating this as a newly opened business.</p>'}
@@ -120,7 +120,7 @@
       contactStatus: "not_contacted",
       doNotContact: false,
       doNotContactReason: "",
-      internalNotes: `Found through an owner-triggered public web search. Verify all details before outreach.${candidate.sourceSnippet ? ` Search evidence: ${candidate.sourceSnippet}` : ""}`,
+      internalNotes: "Discovered through an owner-triggered search. Saved details were independently checked against the business's public website. Verify all details before outreach.",
       archived: false,
       tidalConflictReviewRequired: Boolean(candidate.tidalConflictReviewRequired),
       tidalConflictReviewStatus: candidate.tidalConflictReviewRequired ? "pending" : "not_needed",
