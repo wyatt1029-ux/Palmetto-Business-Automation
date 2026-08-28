@@ -11,7 +11,7 @@
     { id: "demo-3", businessName: "Palmetto Bookkeeping Demo", city: "Myrtle Beach", serviceArea: "Grand Strand", industry: "Professional services", source: "website_inquiry", stage: "discovery_scheduled", fitLevel: "high", fitReasons: ["Payment or intake workflow may be fragmented"], nextAction: "Prepare discovery notes", nextActionDue: "2026-09-02", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "replied", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["Now open social post"], dateConfidence: "estimated", discoveredDate: "2026-08-15", lastVerifiedDate: "2026-08-23", createdAt: "2026-08-15", servicesInterest: ["website", "workflow"], sourceUrls: [], publicSocialLinks: [] },
   ];
   const demoDiscoveryCandidates = [
-    { id: "discovery-demo-1", businessName: "Lowcountry Service Company Demo", websiteUrl: "https://example.com", normalizedDomain: "example.com", city: "843 area code", serviceArea: "843 area code", industry: "Home services", sourceUrls: ["https://example.com"], fitLevel: "high", fitReasons: ["Website appears to rely on phone contact", "No online booking link found", "Mobile viewport setup was not found"], servicesInterest: ["website", "lead workflow"], launchSignals: ["Now open announcement"], dateConfidence: "unknown", publicPhone: null, publicEmail: null, publicContactFormUrl: null, lastVerifiedDate: "2026-08-27", tidalConflictReviewRequired: false, tidalConflictReviewStatus: "not_needed", checks: { hasViewport: false, hasForm: false, hasPhone: true, hasBooking: false } },
+    { id: "discovery-demo-1", businessName: "Lowcountry Service Company Demo", websiteUrl: "https://example.com", normalizedDomain: "example.com", city: "843 area code", serviceArea: "843 area code", industry: "Home services", sourceUrls: ["https://example.com"], fitLevel: "high", fitReasons: ["Website appears to rely on phone contact", "No online booking link found", "Mobile viewport setup was not found"], servicesInterest: ["website", "lead workflow"], launchSignals: ["Now open announcement"], dateConfidence: "unknown", publicPhone: null, publicEmail: null, publicContactFormUrl: null, lastVerifiedDate: "2026-08-27", tidalConflictReviewRequired: false, tidalConflictReviewStatus: "not_needed", checks: { hasViewport: false, hasForm: false, hasPhone: true, hasBooking: false, usesHttps: true, hasSecureAssets: true, hasModernMarkup: true, hasFlexibleLayout: true } },
   ];
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -60,7 +60,11 @@
   };
 
   const discoveryChecks = (checks = {}) => [
-    ["Mobile setup", checks.hasViewport],
+    ["Responsive viewport", checks.hasViewport],
+    ["HTTPS", checks.usesHttps],
+    ["Secure page assets", checks.hasSecureAssets],
+    ["Modern page structure", checks.hasModernMarkup],
+    ["Flexible layout", checks.hasFlexibleLayout],
     ["Request form", checks.hasForm],
     ["Phone link", checks.hasPhone],
     ["Contact path", checks.hasContactLink],

@@ -91,6 +91,34 @@ test("website review reports visible evidence without unexplained scoring", () =
   assert.equal(analysis.checks.hasForm, false);
 });
 
+test("website review identifies evidence-based modernization opportunities", () => {
+  const analysis = analyzeBusinessPage(`
+    <html><head><title>Legacy Service Company</title></head>
+    <frameset><frame src="http://legacy.example/home.html"></frameset>
+    <body style="width: 960px"><center><font>Call today</font></center></body></html>
+  `, "http://legacy.example/");
+  assert.ok(analysis.fitReasons.includes("Mobile viewport setup was not found"));
+  assert.ok(analysis.fitReasons.includes("Website is still served over HTTP"));
+  assert.ok(analysis.fitReasons.includes("Legacy page technology was detected"));
+  assert.ok(analysis.fitReasons.includes("Fixed-width page structure may limit smaller-screen usability"));
+  assert.equal(analysis.checks.usesHttps, false);
+  assert.equal(analysis.checks.hasModernMarkup, false);
+  assert.equal(analysis.checks.hasFlexibleLayout, false);
+
+  const mixedContent = analyzeBusinessPage(`<html><head><meta name="viewport" content="width=device-width"></head><body><img src="http://assets.example/logo.png"></body></html>`, "https://secure.example/");
+  assert.ok(mixedContent.fitReasons.includes("Secure page includes insecure asset links"));
+  assert.equal(mixedContent.checks.hasSecureAssets, false);
+});
+
+test("modern responsive styles do not trigger fixed-width modernization evidence", () => {
+  const analysis = analyzeBusinessPage(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><style>.page{max-width:1200px}</style><title>Modern Service Company</title></head><body><main><form></form><a href="/contact">Contact</a></main></body></html>`, "https://modern.example/");
+  assert.equal(analysis.checks.usesHttps, true);
+  assert.equal(analysis.checks.hasSecureAssets, true);
+  assert.equal(analysis.checks.hasModernMarkup, true);
+  assert.equal(analysis.checks.hasFlexibleLayout, true);
+  assert.equal(analysis.fitReasons.includes("Fixed-width page structure may limit smaller-screen usability"), false);
+});
+
 test("owner-triggered discovery searches public results and returns reviewable candidates", async () => {
   const searched = [];
   const result = await discoverBusinesses({ location: "843 area code", businessTypes: ["home services"], focus: "both", maxResults: 5 }, {

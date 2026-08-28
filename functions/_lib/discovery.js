@@ -88,6 +88,7 @@ const stripTags = (value) => decodeEntities(String(value || "").replace(/<[^>]*>
 export function analyzeBusinessPage(html = "", pageUrl = "") {
   const source = String(html).slice(0, 600_000);
   const lower = source.toLowerCase();
+  const page = safePublicUrl(pageUrl);
   const hasViewport = /<meta[^>]+name=["']viewport["']/i.test(source);
   const hasForm = /<form\b/i.test(source);
   const hasPhone = /href\s*=\s*["']tel:/i.test(source);
@@ -95,11 +96,35 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
   const hasContactLink = /href\s*=\s*["'][^"']*(contact|quote|estimate|request|inquir)[^"']*["']/i.test(source);
   const hasBooking = /href\s*=\s*["'][^"']*(book|schedule|appointment|calendly)[^"']*["']/i.test(source);
   const hasPayment = /href\s*=\s*["'][^"']*(pay|checkout|stripe|paypal|squareup)[^"']*["']/i.test(source);
+  const usesHttps = page?.protocol === "https:";
+  const hasMixedContent = usesHttps && /<(?:script|img|link|iframe|audio|video|source)\b[^>]+(?:src|href)\s*=\s*["']http:\/\//i.test(source);
+  const hasLegacyMarkup = /<(?:frameset|frame|font|center|marquee|applet)(?:\s|\/?>)|classid\s*=\s*["'][^"']*(?:clsid|shockwave)|<!--\[if\s+(?:lt|lte|gt|gte)?\s*IE\b/i.test(source);
+  const layoutTags = source.match(/<(?:body|main|div|table)\b[^>]*>/gi) || [];
+  const hasFixedWidthLayout = layoutTags.some((tag) => (
+    /\bwidth\s*=\s*["']?(?:[6-9]\d{2}|1[0-4]\d{2})(?:px)?(?:["'\s>])/i.test(tag)
+    || /(?:["';\s])width\s*:\s*(?:[6-9]\d{2}|1[0-4]\d{2})px\b/i.test(tag)
+  ));
   const commerceContext = /\b(deposit|invoice|payment|checkout|order online|pay online)\b/i.test(lower);
   const fitReasons = [];
   const servicesInterest = [];
   if (!hasViewport) {
     fitReasons.push("Mobile viewport setup was not found");
+    servicesInterest.push("website");
+  }
+  if (!usesHttps) {
+    fitReasons.push("Website is still served over HTTP");
+    servicesInterest.push("website");
+  }
+  if (hasMixedContent) {
+    fitReasons.push("Secure page includes insecure asset links");
+    servicesInterest.push("website");
+  }
+  if (hasLegacyMarkup) {
+    fitReasons.push("Legacy page technology was detected");
+    servicesInterest.push("website");
+  }
+  if (hasFixedWidthLayout) {
+    fitReasons.push("Fixed-width page structure may limit smaller-screen usability");
     servicesInterest.push("website");
   }
   if (!hasForm) {
@@ -128,14 +153,26 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
   }
   return {
     title,
-    fitReasons: [...new Set(fitReasons)].slice(0, 6),
+    fitReasons: [...new Set(fitReasons)].slice(0, 10),
     servicesInterest: [...new Set(servicesInterest)].slice(0, 6),
     publicPhone: text(phone, 80) || null,
     publicEmail: text(email, 254) || null,
     publicContactFormUrl: safePublicUrl(contactFormUrl)?.href || null,
     launchSignals: launchSignalsFor(stripTags(source)),
     marineContext: marinePattern.test(stripTags(source)),
-    checks: { hasViewport, hasForm, hasPhone, hasEmail, hasContactLink, hasBooking, hasPayment },
+    checks: {
+      hasViewport,
+      hasForm,
+      hasPhone,
+      hasEmail,
+      hasContactLink,
+      hasBooking,
+      hasPayment,
+      usesHttps,
+      hasSecureAssets: !hasMixedContent,
+      hasModernMarkup: !hasLegacyMarkup,
+      hasFlexibleLayout: !hasFixedWidthLayout,
+    },
   };
 }
 
