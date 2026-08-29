@@ -91,6 +91,13 @@ test("website review reports visible evidence without unexplained scoring", () =
   assert.equal(analysis.checks.hasForm, false);
 });
 
+test("website review prefers a structured business name over a generic page title", () => {
+  const analysis = analyzeBusinessPage(`<!doctype html><html><head><title>Request A Quote</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"ProfessionalService","name":"Green Home Solutions"}</script></head><body><form></form></body></html>`, "https://greenhomesolutions.example/");
+  assert.equal(analysis.businessName, "Green Home Solutions");
+  assert.equal(analysis.businessIdentitySource, "structured business data");
+  assert.equal(analysis.genericPageTitle, true);
+});
+
 test("website review identifies evidence-based modernization opportunities", () => {
   const analysis = analyzeBusinessPage(`
     <html><head><title>Legacy Service Company</title></head>
@@ -151,6 +158,14 @@ test("website-opportunity discovery omits verified sites with no observed need",
   const result = await discoverBusinesses({ location: "South Carolina", focus: "website_opportunity", maxResults: 5 }, {
     __TEST_SEARCH: async () => [{ title: "Modern Service Company", url: "https://modern.example/" }],
     __TEST_FETCH: async () => new Response(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>Modern Service Company</title></head><body><form></form><a href="/contact">Contact</a><a href="/book">Book</a></body></html>`, { headers: { "content-type": "text/html" } }),
+  });
+  assert.deepEqual(result.candidates, []);
+});
+
+test("website-opportunity discovery omits publisher listicles without a local-business identity", async () => {
+  const result = await discoverBusinesses({ location: "Charleston, SC", focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [{ title: "The 10 Best General Contractors in Charleston", url: "https://publisher.example/contractors" }],
+    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><title>The 10 Best General Contractors in Charleston</title></head><body><a href="tel:+18435550199">Call</a></body></html>`, { headers: { "content-type": "text/html" } }),
   });
   assert.deepEqual(result.candidates, []);
 });

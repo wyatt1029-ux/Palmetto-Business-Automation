@@ -85,6 +85,53 @@ const decodeEntities = (value) => String(value || "")
 
 const stripTags = (value) => decodeEntities(String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
 
+const attributeValue = (tag, name) => decodeEntities(tag.match(new RegExp(`\\b${name}\\s*=\\s*["']([^"']*)["']`, "i"))?.[1] || "").trim();
+
+const metaValue = (source, names) => {
+  const wanted = new Set(names.map((name) => name.toLowerCase()));
+  for (const tag of source.match(/<meta\b[^>]*>/gi) || []) {
+    const key = (attributeValue(tag, "property") || attributeValue(tag, "name")).toLowerCase();
+    const value = attributeValue(tag, "content");
+    if (wanted.has(key) && value) return text(value, 200);
+  }
+  return "";
+};
+
+const flattenJsonLd = (value) => {
+  if (Array.isArray(value)) return value.flatMap(flattenJsonLd);
+  if (!value || typeof value !== "object") return [];
+  return [value, ...flattenJsonLd(value["@graph"])];
+};
+
+const businessSchemaTypes = new Set([
+  "organization", "localbusiness", "professionalservice", "homeandconstructionbusiness",
+  "contractor", "store", "restaurant", "healthandbeautybusiness", "automotivebusiness",
+  "legalservice", "financialservice", "medicalbusiness", "lodgingbusiness", "sportsactivitylocation",
+]);
+
+const structuredBusinessIdentity = (source) => {
+  const candidates = [];
+  for (const script of source.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      for (const item of flattenJsonLd(JSON.parse(script[1]))) {
+        const types = (Array.isArray(item["@type"]) ? item["@type"] : [item["@type"]])
+          .map((type) => String(type || "").split(/[\/#]/).pop().toLowerCase());
+        const name = text(item.name, 200);
+        if (!name || !types.some((type) => businessSchemaTypes.has(type))) continue;
+        const local = types.some((type) => type !== "organization");
+        candidates.push({ name, source: local ? "structured business data" : "organization data", rank: local ? 2 : 1 });
+      }
+    } catch {
+      // A malformed unrelated JSON-LD block should not prevent page review.
+    }
+  }
+  candidates.sort((a, b) => b.rank - a.rank);
+  return candidates[0] || null;
+};
+
+const pageTitleLooksLikeListicle = (title) => /\b(?:top|best)\s+\d+\b|\b\d+\s+(?:best|top)\b|\b(?:directory|list of|guide to)\b/i.test(title);
+const genericPageTitle = (title) => /^(?:request (?:a )?quote|contact(?: us)?|home|services?|welcome|our work|about us)$/i.test(title.trim());
+
 export function analyzeBusinessPage(html = "", pageUrl = "") {
   const source = String(html).slice(0, 600_000);
   const lower = source.toLowerCase();
@@ -144,6 +191,11 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     servicesInterest.push("payment workflow");
   }
   const title = stripTags(source.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
+  const identity = structuredBusinessIdentity(source)
+    || (() => {
+      const name = metaValue(source, ["og:site_name", "application-name"]);
+      return name ? { name, source: "site identity", rank: 0 } : null;
+    })();
   const phone = decodeEntities(source.match(/href\s*=\s*["']tel:([^"'#?]+)/i)?.[1] || "").trim() || null;
   const email = decodeEntities(source.match(/href\s*=\s*["']mailto:([^"'?]+)/i)?.[1] || "").trim() || null;
   const contactHref = source.match(/href\s*=\s*["']([^"']*(?:contact|quote|estimate|request|inquir)[^"']*)["']/i)?.[1];
@@ -153,6 +205,10 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
   }
   return {
     title,
+    businessName: identity?.name || null,
+    businessIdentitySource: identity?.source || null,
+    pageTitleLooksLikeListicle: pageTitleLooksLikeListicle(title),
+    genericPageTitle: genericPageTitle(title),
     fitReasons: [...new Set(fitReasons)].slice(0, 10),
     servicesInterest: [...new Set(servicesInterest)].slice(0, 6),
     publicPhone: text(phone, 80) || null,
@@ -248,7 +304,10 @@ export async function discoverBusinesses(input, env = {}) {
     // come from the independently fetched business website, not the search result.
     if (!inspected) return null;
     const analysis = inspected.analysis;
-    const businessName = cleanBusinessName(analysis.title || normalizeDomain(inspected.url).split(".")[0]);
+    if (analysis.pageTitleLooksLikeListicle && analysis.businessIdentitySource !== "structured business data") return null;
+    const domain = normalizeDomain(inspected.url);
+    const businessName = analysis.businessName
+      || (analysis.genericPageTitle ? domain : cleanBusinessName(analysis.title || domain.split(".")[0]));
     const fitReasons = [...analysis.fitReasons];
     const servicesInterest = [...analysis.servicesInterest];
     if (!fitReasons.length && analysis.launchSignals.length) {
@@ -261,7 +320,7 @@ export async function discoverBusinesses(input, env = {}) {
       id: crypto.randomUUID(),
       businessName,
       websiteUrl: new URL(inspected.url).origin,
-      normalizedDomain: normalizeDomain(inspected.url),
+      normalizedDomain: domain,
       city: criteria.location,
       serviceArea: criteria.location,
       industry: criteria.businessTypes.join(", ") || null,
