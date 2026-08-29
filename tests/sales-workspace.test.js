@@ -147,6 +147,14 @@ test("lead discovery does not persist search-result content or unverified websit
   assert.deepEqual(result.candidates, []);
 });
 
+test("website-opportunity discovery omits verified sites with no observed need", async () => {
+  const result = await discoverBusinesses({ location: "South Carolina", focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [{ title: "Modern Service Company", url: "https://modern.example/" }],
+    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>Modern Service Company</title></head><body><form></form><a href="/contact">Contact</a><a href="/book">Book</a></body></html>`, { headers: { "content-type": "text/html" } }),
+  });
+  assert.deepEqual(result.candidates, []);
+});
+
 test("discovery API is owner-only and requires configured search data", async () => {
   const unauthorized = await runDiscovery({
     request: new Request("https://example.test/owner/api/discovery", { method: "POST", headers: { origin: "https://example.test", "content-type": "application/json" }, body: JSON.stringify({ location: "Charleston", maxResults: 5 }) }),

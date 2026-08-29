@@ -34,16 +34,20 @@
 
       <section class="discovery-panel" id="discovery-panel" aria-labelledby="discovery-title" hidden>
         <div class="panel-heading discovery-heading">
-          <div><p class="eyebrow">Owner-triggered public research</p><h2 id="discovery-title">Find New Businesses</h2><p>Search a city, ZIP code, county, region, or telephone area code. PBA checks public business pages for specific website and workflow opportunities.</p></div>
+          <div><p class="eyebrow">Owner-triggered public research</p><h2 id="discovery-title">Find Businesses That May Need Website Help</h2><p>Use a one-click local or statewide search, or choose a city, ZIP code, county, region, or telephone area code. PBA checks public business pages for specific website and workflow opportunities.</p></div>
+        </div>
+        <div class="discovery-quick-actions" aria-label="Quick business searches">
+          <button class="button button-secondary" type="button" data-discovery-location="Charleston, SC" data-discovery-focus="website_opportunity">Find Charleston opportunities</button>
+          <button class="button button-secondary" type="button" data-discovery-location="South Carolina" data-discovery-focus="website_opportunity">Find South Carolina opportunities</button>
         </div>
         <form class="discovery-form" id="discovery-form">
-          <label class="discovery-location">Search area<input name="location" required maxlength="120" placeholder="Charleston, SC · 29577 · 843 area code" autocomplete="off" /></label>
+          <label class="discovery-location">Search area<input name="location" required maxlength="120" value="Charleston, SC" placeholder="Charleston, SC · 29577 · 843 area code" autocomplete="off" /></label>
           <label>Business types <small>Optional, comma-separated</small><input name="businessTypes" maxlength="500" placeholder="contractor, home services, nonprofit" /></label>
-          <label>Search focus<select name="focus"><option value="both">New businesses + website opportunities</option><option value="new_business">New-business signals</option><option value="website_opportunity">Website and workflow opportunities</option></select></label>
+          <label>Search focus<select name="focus"><option value="both">New businesses + website opportunities</option><option value="new_business">New-business signals</option><option value="website_opportunity" selected>Website and workflow opportunities</option></select></label>
           <label>Maximum results<select name="maxResults"><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option></select></label>
           <button class="button button-primary" id="run-discovery" type="submit">Search Public Web</button>
         </form>
-        <p class="discovery-note">Each search uses provider quota. Search matches remain temporary; only details independently checked against a business website can be added to the CRM. Results are evidence for owner review—not an exhaustive market list. No outreach is sent.</p>
+        <p class="discovery-note">Each search uses provider quota. Results are live suggestions and clear when the page is refreshed; use Add to Radar to keep a business you want to review. Only details independently checked against a business website can be added to the CRM. No outreach is sent.</p>
         <p class="form-error workspace-error" id="discovery-error" role="alert" hidden></p>
         <p class="discovery-status" id="discovery-status" aria-live="polite"></p>
         <div class="discovery-results" id="discovery-results"></div>

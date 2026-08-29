@@ -181,6 +181,13 @@
     }
   }
 
+  function runQuickDiscovery(button) {
+    const form = $("#discovery-form");
+    form.elements.location.value = button.dataset.discoveryLocation || form.elements.location.value;
+    form.elements.focus.value = button.dataset.discoveryFocus || form.elements.focus.value;
+    form.requestSubmit();
+  }
+
   function renderRows() {
     const tbody = $("#lead-rows");
     $("#record-count").textContent = `${state.leads.length} record${state.leads.length === 1 ? "" : "s"}`;
@@ -451,6 +458,7 @@
   $("#close-detail").addEventListener("click", () => $("#detail-dialog").close());
   $("#lead-form").addEventListener("submit", saveLead);
   $("#discovery-form").addEventListener("submit", runDiscovery);
+  $$('[data-discovery-location]').forEach((button) => button.addEventListener("click", () => runQuickDiscovery(button)));
   $$(".view-tab").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$('[data-summary]').forEach((button) => button.addEventListener("click", () => {
     $("#filters-form").reset();

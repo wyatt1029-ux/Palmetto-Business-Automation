@@ -249,7 +249,13 @@ export async function discoverBusinesses(input, env = {}) {
     if (!inspected) return null;
     const analysis = inspected.analysis;
     const businessName = cleanBusinessName(analysis.title || normalizeDomain(inspected.url).split(".")[0]);
-    const fitReasons = analysis.fitReasons.length ? analysis.fitReasons : ["No obvious website or workflow gap was found in the automated check"];
+    const fitReasons = [...analysis.fitReasons];
+    const servicesInterest = [...analysis.servicesInterest];
+    if (!fitReasons.length && analysis.launchSignals.length) {
+      fitReasons.push("New-business launch signal was found; review its website and customer intake path");
+      servicesInterest.push("website");
+    }
+    if (!fitReasons.length) return null;
     const marine = analysis.marineContext || marinePattern.test(businessName);
     return {
       id: crypto.randomUUID(),
@@ -262,7 +268,7 @@ export async function discoverBusinesses(input, env = {}) {
       sourceUrls: [inspected.url],
       fitLevel: fitReasons.length >= 3 ? "high" : fitReasons.length ? "medium" : "low",
       fitReasons,
-      servicesInterest: analysis.servicesInterest,
+      servicesInterest: [...new Set(servicesInterest)],
       launchSignals: analysis.launchSignals,
       dateConfidence: "unknown",
       publicPhone: analysis.publicPhone,
