@@ -371,6 +371,35 @@ test("lead API records explicit stage and do-not-contact changes", async () => {
   assert.ok(calls.some((call) => call.query.includes("lead_activities") && call.values.includes("Stage changed to qualified.")));
 });
 
+test("next actions can be completed and reopened without duplicate-review blocking", async () => {
+  for (const [action, starting, expected, note] of [
+    ["complete", false, true, "Next action completed."],
+    ["reopen", true, false, "Next action reopened."],
+  ]) {
+    const calls = [];
+    const sql = async (strings, ...values) => {
+      const query = strings.join("?");
+      calls.push({ query, values });
+      if (query.includes("select * from leads where id")) return [leadRow({ next_action_completed: starting })];
+      if (query.includes("select id, business_name")) return [{ id: "duplicate-that-must-not-block" }];
+      if (query.includes("update leads set")) return [leadRow({ next_action_completed: expected })];
+      return [];
+    };
+    const response = await putLead({
+      request: new Request("https://example.test/owner/api/leads", {
+        method: "PUT",
+        headers: { origin: "https://example.test", "content-type": "application/json" },
+        body: JSON.stringify({ id: leadRow().id, action }),
+      }),
+      env: ownerEnv(sql),
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).lead.nextActionCompleted, expected);
+    assert.equal(calls.some((call) => call.query.includes("select id, business_name")), false);
+    assert.ok(calls.some((call) => call.query.includes("lead_activities") && call.values.includes(note)));
+  }
+});
+
 test("duplicate-review migration keeps lookup performance without blocking reviewed records", async () => {
   const [migration, api] = await Promise.all([
     readFile(new URL("../migrations/0005_lead_duplicate_review.sql", import.meta.url), "utf8"),

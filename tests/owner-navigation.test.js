@@ -34,6 +34,8 @@ test("owner record pages remain private and use the protected API", async () => 
   assert.match(script, /\/owner\/api\/records/);
   assert.match(leads, /URLSearchParams\(location\.search\)\.get\("lead"\)/);
   assert.match(leads, /openDetail\(leadId\)/);
+  assert.match(leads, /Reopen Next Action/);
+  assert.match(leads, /action === "complete" \|\| action === "reopen"/);
 });
 
 test("owner record API rejects unauthenticated reads", async () => {

@@ -269,6 +269,7 @@ export async function onRequestPut({ request, env }) {
     const existing = serializeLead(existingRows[0]);
     const changes = { ...data };
     if (data.action === "complete") changes.nextActionCompleted = true;
+    if (data.action === "reopen") changes.nextActionCompleted = false;
     if (data.action === "do_not_contact") {
       changes.doNotContact = true;
       changes.contactStatus = "do_not_contact";
@@ -281,7 +282,8 @@ export async function onRequestPut({ request, env }) {
     const input = validateLeadInput(leadInput(existing, changes));
     const normalized = normalizeBusinessName(input.businessName);
     const domain = input.normalizedDomain || normalizeDomain(input.websiteUrl);
-    const duplicates = await duplicateRows(sql, normalized, domain, id);
+    const workflowActions = new Set(["complete", "reopen", "do_not_contact", "archive"]);
+    const duplicates = workflowActions.has(data.action) ? [] : await duplicateRows(sql, normalized, domain, id);
     if (duplicates.length && data.confirmDuplicate !== true) return json({ error: "Possible duplicate lead. Review before saving.", duplicates }, 409);
     const conflictStatus = input.tidalConflictReviewRequired && input.tidalConflictReviewStatus === "not_needed" ? "pending" : input.tidalConflictReviewStatus;
     const result = await sql`
@@ -302,6 +304,9 @@ export async function onRequestPut({ request, env }) {
     const activityType = stageActivities.get(input.stage);
     if (input.stage !== existing.stage && activityType) {
       await sql`insert into lead_activities (lead_id, activity_type, note, owner_email) values (${id}, ${activityType}, ${`Stage changed to ${input.stage.replaceAll("_", " ")}.`}, ${ownerEmail})`;
+    } else if (data.action === "complete" || data.action === "reopen") {
+      const note = data.action === "complete" ? "Next action completed." : "Next action reopened.";
+      await sql`insert into lead_activities (lead_id, activity_type, note, owner_email) values (${id}, 'internal_note', ${note}, ${ownerEmail})`;
     } else if (data.action === "do_not_contact") {
       await sql`insert into lead_activities (lead_id, activity_type, note, owner_email) values (${id}, 'internal_note', 'Marked do not contact.', ${ownerEmail})`;
     }

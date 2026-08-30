@@ -303,7 +303,7 @@
       <div class="detail-actions">
         <button class="button button-primary" type="button" data-detail-action="next">Set Next Action</button>
         <button class="button button-secondary" type="button" data-detail-action="edit">Edit Lead</button>
-        <button class="button button-secondary" type="button" data-detail-action="complete">Complete Next Action</button>
+        ${lead.nextAction ? `<button class="button button-secondary" type="button" data-detail-action="${lead.nextActionCompleted ? "reopen" : "complete"}">${lead.nextActionCompleted ? "Reopen Next Action" : "Complete Next Action"}</button>` : ""}
         <button class="button button-secondary" type="button" data-detail-action="do_not_contact">Mark Do Not Contact</button>
         <button class="button button-secondary" type="button" data-detail-action="archive">Archive Lead</button>
       </div>
@@ -363,6 +363,11 @@
       }
       try {
         await api(LEADS_API, { method: "PUT", body: JSON.stringify(data) });
+        if (action === "complete" || action === "reopen") {
+          await load();
+          await openDetail(lead.id);
+          return;
+        }
         $("#detail-dialog").close();
         await load();
       } catch (error) {
