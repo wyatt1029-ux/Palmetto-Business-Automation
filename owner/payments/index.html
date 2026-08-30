@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow,noarchive" />
+    <title>Payments | PBA owner workspace</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/owner/leads/leads.css" />
+    <link rel="stylesheet" href="/owner/records/records.css" />
+  </head>
+  <body data-records-view="payments">
+    <main class="owner-shell" id="main-content">
+      <header class="owner-header">
+        <a class="brand" href="/" aria-label="Palmetto Business Automation home"><span class="brand-mark">PBA</span><span class="brand-copy"><strong>Palmetto Business Automation</strong><span>Private owner workspace</span></span></a>
+        <nav class="owner-nav" aria-label="Owner workspace navigation">
+          <a href="/owner/leads/">Leads</a>
+          <a href="/sow-builder.html">SOWs</a>
+          <a href="/owner/clients-projects/">Clients &amp; Projects</a>
+          <a class="active" href="/owner/payments/" aria-current="page">Payments</a>
+        </nav>
+      </header>
+      <section class="workspace-heading records-heading" aria-labelledby="page-title">
+        <div><p class="eyebrow">Owner-only payment workspace</p><h1 id="page-title">Payments</h1><p>See approved project amounts and the current Stripe payment or recurring-billing status recorded by PBA.</p></div>
+        <a class="button button-primary" href="/sow-builder.html">Open SOW builder</a>
+      </section>
+      <section class="workspace-panel records-panel" aria-labelledby="records-title">
+        <div class="panel-heading"><div><p class="eyebrow">Private records</p><h2 id="records-title">Project payment status</h2></div><span class="record-count" id="record-count">Loading…</span></div>
+        <p class="records-error" id="records-error" role="alert" hidden></p>
+        <div class="records-toolbar"><label>Search records<input id="records-search" type="search" placeholder="Business, customer number, project, or status" /></label></div>
+        <div class="table-wrap"><table class="records-table"><thead><tr><th>Client</th><th>Project</th><th>Amount</th><th>Payment</th><th>Billing</th><th>Updated</th></tr></thead><tbody id="records-body"><tr><td class="empty-state" colspan="6">Loading private records…</td></tr></tbody></table></div>
+      </section>
+    </main>
+    <script src="/owner/records/records.js" defer></script>
+  </body>
+</html>

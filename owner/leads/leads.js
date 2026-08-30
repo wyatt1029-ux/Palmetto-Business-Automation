@@ -4,7 +4,14 @@
   const LIST_FIELDS = ["sourceUrls", "publicSocialLinks", "fitReasons", "servicesInterest", "launchSignals"];
   const BOOLEAN_FIELDS = ["nextActionCompleted", "tidalConflictReviewRequired", "doNotContact", "archived"];
   const pipelineStages = ["new", "contacted", "discovery_scheduled", "qualified", "scope_sent", "approved", "paid_active"];
-  const state = { view: "queue", leads: [], selected: null, pipelineCounts: {}, discoveryCandidates: [] };
+  const state = {
+    view: "queue",
+    leads: [],
+    selected: null,
+    pipelineCounts: {},
+    discoveryCandidates: [],
+    pendingLeadId: new URLSearchParams(location.search).get("lead"),
+  };
   const demoLeads = [
     { id: "demo-1", businessName: "Lowcountry HVAC Demo", city: "Charleston", serviceArea: "Charleston", industry: "Home services", source: "new_business_radar", stage: "new", fitLevel: "high", fitReasons: ["No clear service-request form"], nextAction: "Review contact path", nextActionDue: "2026-08-28", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["New LLC filing"], dateConfidence: "confirmed", discoveredDate: "2026-08-20", lastVerifiedDate: "2026-08-25", createdAt: "2026-08-20", servicesInterest: ["landing page"], sourceUrls: [], publicSocialLinks: [] },
     { id: "demo-2", businessName: "Harbor Route Marine Demo", city: "Mount Pleasant", serviceArea: "Charleston", industry: "Marine service", source: "researched", stage: "contacted", fitLevel: "medium", fitReasons: ["Website has phone only; no lead workflow"], nextAction: "Complete conflict review", nextActionDue: "2026-08-27", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewRequired: true, tidalConflictReviewStatus: "pending", archived: false, launchSignals: ["New website"], dateConfidence: "unknown", discoveredDate: "2026-08-18", lastVerifiedDate: "2026-08-24", createdAt: "2026-08-18", servicesInterest: ["workflow"], sourceUrls: [], publicSocialLinks: [] },
@@ -258,6 +265,14 @@
       $("#conflict-count").textContent = body.counts?.conflictReviews ?? "0";
       renderRows();
       renderPipeline();
+      if (state.pendingLeadId) {
+        const leadId = state.pendingLeadId;
+        state.pendingLeadId = null;
+        const url = new URL(location.href);
+        url.searchParams.delete("lead");
+        history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+        await openDetail(leadId);
+      }
     } catch (error) {
       state.leads = [];
       renderRows();

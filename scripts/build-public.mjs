@@ -51,6 +51,8 @@ const fingerprintedAssets = [
   "assets/js/example-builds-showcase.js",
   "owner/leads/leads.css",
   "owner/leads/leads.js",
+  "owner/records/records.css",
+  "owner/records/records.js",
 ];
 const legacyAssetsExcludedFromBuild = [
   "assets/logo.png",
