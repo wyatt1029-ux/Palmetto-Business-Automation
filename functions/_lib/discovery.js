@@ -6,7 +6,9 @@ export const DISCOVERY_RESULT_LIMITS = [5, 10, 20];
 const excludedHosts = [
   "facebook.com", "instagram.com", "linkedin.com", "yelp.com", "yellowpages.com",
   "google.com", "googleusercontent.com", "bing.com", "x.com", "twitter.com",
-  "mapquest.com", "bbb.org", "tripadvisor.com", "nextdoor.com",
+  "mapquest.com", "bbb.org", "tripadvisor.com", "nextdoor.com", "angi.com",
+  "homeadvisor.com", "thumbtack.com", "houzz.com", "buildzoom.com", "porch.com",
+  "expertise.com", "manta.com", "chamberofcommerce.com", "merchantcircle.com",
 ];
 const marinePattern = /\b(marine|boat|boating|yacht|outboard|watercraft|dock|marina)\b/i;
 const launchPatterns = [
@@ -36,15 +38,15 @@ export function validateDiscoveryInput(data = {}) {
 }
 
 export function buildDiscoveryQueries({ location, focus, businessTypes }) {
-  const typeText = businessTypes.length ? businessTypes.join(" OR ") : "service business OR contractor OR local business";
-  const exclusions = "-site:yelp.com -site:facebook.com -site:instagram.com -site:linkedin.com -site:yellowpages.com";
+  const typeText = businessTypes.length ? businessTypes.map((type) => `"${type}"`).join(" OR ") : "\"service business\" OR contractor OR \"local business\"";
+  const exclusions = "-site:yelp.com -site:facebook.com -site:instagram.com -site:linkedin.com -site:yellowpages.com -site:angi.com -site:homeadvisor.com -site:thumbtack.com -site:houzz.com -site:buildzoom.com";
   const queries = [];
   if (focus !== "website_opportunity") {
     queries.push(`(\"now open\" OR \"grand opening\" OR \"new business\" OR \"opening soon\") \"${location}\" (${typeText}) ${exclusions}`);
   }
   if (focus !== "new_business") {
-    queries.push(`(${typeText}) \"${location}\" (contact OR services OR \"request a quote\") ${exclusions}`);
-    queries.push(`(${typeText}) \"${location}\" (booking OR appointment OR estimate) ${exclusions}`);
+    queries.push(`(${typeText}) \"${location}\" (contact OR services OR \"request a quote\") -directory -magazine ${exclusions}`);
+    queries.push(`(${typeText}) \"${location}\" (booking OR appointment OR estimate) -directory -magazine ${exclusions}`);
   }
   return queries;
 }
@@ -109,6 +111,37 @@ const businessSchemaTypes = new Set([
   "legalservice", "financialservice", "medicalbusiness", "lodgingbusiness", "sportsactivitylocation",
 ]);
 
+const schemaValues = (value) => {
+  if (Array.isArray(value)) return value.flatMap(schemaValues);
+  if (value && typeof value === "object") return [value.name, value.addressLocality, value.addressRegion, value.postalCode].flatMap(schemaValues);
+  return value == null ? [] : [String(value)];
+};
+
+const structuredLocationDetails = (source) => {
+  const details = { cities: [], regions: [], postalCodes: [], serviceAreas: [], hasLocalAddress: false };
+  for (const script of source.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      for (const item of flattenJsonLd(JSON.parse(script[1]))) {
+        const addresses = Array.isArray(item.address) ? item.address : [item.address];
+        for (const address of addresses.filter(Boolean)) {
+          if (typeof address !== "object") continue;
+          if (address.addressLocality) details.cities.push(...schemaValues(address.addressLocality));
+          if (address.addressRegion) details.regions.push(...schemaValues(address.addressRegion));
+          if (address.postalCode) details.postalCodes.push(...schemaValues(address.postalCode));
+          if (address.addressLocality || address.addressRegion || address.postalCode) details.hasLocalAddress = true;
+        }
+        details.serviceAreas.push(...schemaValues(item.areaServed || item.serviceArea));
+      }
+    } catch {
+      // Invalid unrelated structured data is ignored.
+    }
+  }
+  for (const key of ["cities", "regions", "postalCodes", "serviceAreas"]) {
+    details[key] = [...new Set(details[key].map((value) => text(value, 120)).filter(Boolean))];
+  }
+  return details;
+};
+
 const structuredBusinessIdentity = (source) => {
   const candidates = [];
   for (const script of source.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
@@ -131,10 +164,65 @@ const structuredBusinessIdentity = (source) => {
 
 const pageTitleLooksLikeListicle = (title) => /\b(?:top|best)\s+\d+\b|\b\d+\s+(?:best|top)\b|\b(?:directory|list of|guide to)\b/i.test(title);
 const genericPageTitle = (title) => /^(?:request (?:a )?quote|contact(?: us)?|home|services?|welcome|our work|about us)$/i.test(title.trim());
+const publisherIdentity = (value) => /\b(?:directory|magazine|news|reviews?|listings?|best of|top \d+|find (?:a|the)|charleston(?:'s|s) finest)\b/i.test(value || "");
+
+const typeAliases = new Map([
+  ["plumber", ["plumber", "plumbing"]],
+  ["plumbing contractor", ["plumber", "plumbing"]],
+  ["marine service", ["marine", "boat repair", "boat service", "outboard", "yacht service"]],
+  ["boat repair", ["boat repair", "marine service", "outboard repair"]],
+  ["auto service", ["auto service", "auto repair", "automotive", "mechanic"]],
+  ["auto repair", ["auto repair", "automotive", "mechanic"]],
+]);
+
+const containsPhrase = (haystack, needle) => {
+  const cleanNeedle = String(needle || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  if (!cleanNeedle) return false;
+  const cleanHaystack = String(haystack || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return ` ${cleanHaystack} `.includes(` ${cleanNeedle} `);
+};
+
+export const pageMatchesBusinessTypes = (analysis, businessTypes = []) => {
+  if (!businessTypes.length) return true;
+  return businessTypes.some((type) => {
+    const normalized = String(type).toLowerCase().trim();
+    const aliases = typeAliases.get(normalized) || [normalized];
+    return aliases.some((alias) => containsPhrase(analysis.searchableText, alias));
+  });
+};
+
+export const pageMatchesLocation = (analysis, requestedLocation) => {
+  const requested = String(requestedLocation || "").toLowerCase().trim();
+  const details = analysis.locationDetails || { cities: [], regions: [], postalCodes: [], serviceAreas: [] };
+  const allStructured = [...details.cities, ...details.regions, ...details.postalCodes, ...details.serviceAreas].join(" ");
+  const areaCode = requested.match(/\b(\d{3})\s*(?:area\s*code)?\b/);
+  if (areaCode && /area\s*code/.test(requested)) {
+    const phone = String(analysis.publicPhone || "").replace(/\D/g, "").replace(/^1/, "");
+    const matched = phone.startsWith(areaCode[1]) || containsPhrase(analysis.searchableText, areaCode[1]);
+    return { matched, evidence: matched ? `${areaCode[1]} public phone or service-area reference` : null };
+  }
+  const zip = requested.match(/\b\d{5}\b/)?.[0];
+  if (zip) {
+    const matched = details.postalCodes.includes(zip) || containsPhrase(analysis.searchableText, zip);
+    return { matched, evidence: matched ? `${zip} address or service-area reference` : null };
+  }
+  if (/^(?:south carolina|sc)$/.test(requested)) {
+    const matched = details.regions.some((region) => /^(?:sc|south carolina)$/i.test(region))
+      || containsPhrase(analysis.searchableText, "south carolina") || containsPhrase(analysis.searchableText, "sc");
+    return { matched, evidence: matched ? "South Carolina address or service-area reference" : null };
+  }
+  const primary = requested.split(",")[0].replace(/\b(?:county|region)\b/g, "").trim();
+  const matched = containsPhrase(allStructured, primary) || containsPhrase(analysis.searchableText, primary);
+  return { matched, evidence: matched ? `${primary} address or service-area reference` : null };
+};
 
 export function analyzeBusinessPage(html = "", pageUrl = "") {
   const source = String(html).slice(0, 600_000);
   const lower = source.toLowerCase();
+  const searchableText = stripTags(source
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " "));
+  const locationDetails = structuredLocationDetails(source);
   const page = safePublicUrl(pageUrl);
   const hasViewport = /<meta[^>]+name=["']viewport["']/i.test(source);
   const hasForm = /<form\b/i.test(source);
@@ -209,6 +297,10 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     businessIdentitySource: identity?.source || null,
     pageTitleLooksLikeListicle: pageTitleLooksLikeListicle(title),
     genericPageTitle: genericPageTitle(title),
+    publisherIdentity: publisherIdentity(`${identity?.name || ""} ${title}`),
+    searchableText,
+    locationDetails,
+    primaryCity: locationDetails.cities[0] || null,
     fitReasons: [...new Set(fitReasons)].slice(0, 10),
     servicesInterest: [...new Set(servicesInterest)].slice(0, 6),
     publicPhone: text(phone, 80) || null,
@@ -304,7 +396,11 @@ export async function discoverBusinesses(input, env = {}) {
     // come from the independently fetched business website, not the search result.
     if (!inspected) return null;
     const analysis = inspected.analysis;
-    if (analysis.pageTitleLooksLikeListicle && analysis.businessIdentitySource !== "structured business data") return null;
+    if (analysis.pageTitleLooksLikeListicle || analysis.publisherIdentity) return null;
+    if (analysis.genericPageTitle && !analysis.businessName) return null;
+    if (!pageMatchesBusinessTypes(analysis, criteria.businessTypes)) return null;
+    const locationMatch = pageMatchesLocation(analysis, criteria.location);
+    if (!locationMatch.matched) return null;
     const domain = normalizeDomain(inspected.url);
     const businessName = analysis.businessName
       || (analysis.genericPageTitle ? domain : cleanBusinessName(analysis.title || domain.split(".")[0]));
@@ -321,7 +417,7 @@ export async function discoverBusinesses(input, env = {}) {
       businessName,
       websiteUrl: new URL(inspected.url).origin,
       normalizedDomain: domain,
-      city: criteria.location,
+      city: analysis.primaryCity || criteria.location,
       serviceArea: criteria.location,
       industry: criteria.businessTypes.join(", ") || null,
       sourceUrls: [inspected.url],
@@ -333,6 +429,7 @@ export async function discoverBusinesses(input, env = {}) {
       publicPhone: analysis.publicPhone,
       publicEmail: analysis.publicEmail,
       publicContactFormUrl: analysis.publicContactFormUrl,
+      locationEvidence: locationMatch.evidence,
       lastVerifiedDate: new Date().toISOString().slice(0, 10),
       tidalConflictReviewRequired: marine,
       tidalConflictReviewStatus: marine ? "pending" : "not_needed",

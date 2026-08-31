@@ -21,12 +21,13 @@ test("every owner header destination resolves to a real page", async () => {
 });
 
 test("owner record pages remain private and use the protected API", async () => {
-  const [clients, payments, headers, script, leads] = await Promise.all([
+  const [clients, payments, headers, script, leads, leadsHtml] = await Promise.all([
     readFile(source("owner/clients-projects/index.html"), "utf8"),
     readFile(source("owner/payments/index.html"), "utf8"),
     readFile(source("_headers"), "utf8"),
     readFile(source("owner/records/records.js"), "utf8"),
     readFile(source("owner/leads/leads.js"), "utf8"),
+    readFile(source("owner/leads/index.html"), "utf8"),
   ]);
   assert.match(clients, /noindex,nofollow,noarchive/);
   assert.match(payments, /noindex,nofollow,noarchive/);
@@ -36,6 +37,14 @@ test("owner record pages remain private and use the protected API", async () => 
   assert.match(leads, /openDetail\(leadId\)/);
   assert.match(leads, /Reopen Next Action/);
   assert.match(leads, /action === "complete" \|\| action === "reopen"/);
+  assert.match(leads, /Create Email Draft/);
+  assert.match(leads, /activityType: "email_drafted"/);
+  assert.match(leads, /No email was sent/);
+  assert.doesNotMatch(leads, /sendEmail|emailjs|\/api\/send/);
+  assert.match(leadsHtml, /Find plumbers in this area/);
+  assert.match(leadsHtml, /Find marine services in this area/);
+  assert.match(leadsHtml, /Find auto services in this area/);
+  assert.match(leads, /discovery-quick-actions \[data-discovery-focus\]/);
 });
 
 test("owner record API rejects unauthenticated reads", async () => {

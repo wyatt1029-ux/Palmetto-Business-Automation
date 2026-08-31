@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeBusinessName, normalizeDomain, serializeLead, syncLeadFromIntake, validateLeadInput } from "../functions/_lib/leads.js";
-import { analyzeBusinessPage, buildDiscoveryQueries, discoverBusinesses, safePublicUrl, validateDiscoveryInput } from "../functions/_lib/discovery.js";
+import { analyzeBusinessPage, buildDiscoveryQueries, discoverBusinesses, pageMatchesBusinessTypes, pageMatchesLocation, safePublicUrl, validateDiscoveryInput } from "../functions/_lib/discovery.js";
 import { requireOwner } from "../functions/_lib/security.js";
 import { readFile } from "node:fs/promises";
 import { __test as leadApi, onRequestGet as getLeads, onRequestPost as postLead, onRequestPut as putLead } from "../functions/api/leads.js";
@@ -126,6 +126,18 @@ test("modern responsive styles do not trigger fixed-width modernization evidence
   assert.equal(analysis.fitReasons.includes("Fixed-width page structure may limit smaller-screen usability"), false);
 });
 
+test("discovery verifies requested trade and local service-area evidence", () => {
+  const localPlumber = analyzeBusinessPage(`<!doctype html><html><head><title>Harbor Plumbing</title><script type="application/ld+json">{"@context":"https://schema.org","@type":["LocalBusiness","Plumber"],"name":"Harbor Plumbing","address":{"@type":"PostalAddress","addressLocality":"Charleston","addressRegion":"SC","postalCode":"29401"}}</script></head><body><h1>Charleston plumbing and drain repair</h1><a href="tel:+18435550199">Call</a></body></html>`, "https://harbor-plumbing.example/");
+  assert.equal(pageMatchesBusinessTypes(localPlumber, ["plumber", "plumbing contractor"]), true);
+  assert.equal(pageMatchesLocation(localPlumber, "Charleston, SC").matched, true);
+  assert.equal(pageMatchesLocation(localPlumber, "843 area code").matched, true);
+  assert.equal(pageMatchesLocation(localPlumber, "29401").matched, true);
+
+  const webOnly = analyzeBusinessPage(`<!doctype html><html><head><title>Online Business Services</title></head><body><p>Nationwide virtual services for online companies.</p></body></html>`, "https://online.example/");
+  assert.equal(pageMatchesBusinessTypes(webOnly, ["plumber"]), false);
+  assert.equal(pageMatchesLocation(webOnly, "Charleston, SC").matched, false);
+});
+
 test("owner-triggered discovery searches public results and returns reviewable candidates", async () => {
   const searched = [];
   const result = await discoverBusinesses({ location: "843 area code", businessTypes: ["home services"], focus: "both", maxResults: 5 }, {
@@ -166,6 +178,19 @@ test("website-opportunity discovery omits publisher listicles without a local-bu
   const result = await discoverBusinesses({ location: "Charleston, SC", focus: "website_opportunity", maxResults: 5 }, {
     __TEST_SEARCH: async () => [{ title: "The 10 Best General Contractors in Charleston", url: "https://publisher.example/contractors" }],
     __TEST_FETCH: async () => new Response(`<!doctype html><html><head><title>The 10 Best General Contractors in Charleston</title></head><body><a href="tel:+18435550199">Call</a></body></html>`, { headers: { "content-type": "text/html" } }),
+  });
+  assert.deepEqual(result.candidates, []);
+});
+
+test("website-opportunity discovery rejects directories, generic quote pages, and nonlocal trade matches", async () => {
+  const pages = new Map([
+    ["https://publisher.example/list", `<!doctype html><html><head><title>The 10 Best Plumbers in Charleston</title><script type="application/ld+json">{"@type":"Organization","name":"Contractor Directory"}</script></head><body><p>Charleston plumber listings</p></body></html>`],
+    ["https://quote.example/", `<!doctype html><html><head><title>Request A Quote</title></head><body><p>Charleston plumbing quote form</p><a href="tel:+18435550199">Call</a></body></html>`],
+    ["https://remote.example/", `<!doctype html><html><head><title>Remote Plumbing Software</title></head><body><p>Online software for plumbing companies nationwide.</p></body></html>`],
+  ]);
+  const result = await discoverBusinesses({ location: "Charleston, SC", businessTypes: ["plumber"], focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [...pages.keys()].map((url) => ({ title: url, url })),
+    __TEST_FETCH: async (url) => new Response(pages.get(url), { headers: { "content-type": "text/html" } }),
   });
   assert.deepEqual(result.candidates, []);
 });

@@ -17,6 +17,10 @@ td small{display:block;margin-top:4px;color:var(--muted);font-size:.8rem;line-he
 .business-link:hover,.business-link:focus-visible{text-decoration:underline;outline:3px solid rgba(21,106,88,.2);outline-offset:2px}
 .lead-dialog{width:min(980px,calc(100% - 24px));overflow:auto}
 .detail-dialog{width:min(1000px,calc(100% - 24px));overflow:auto}
+.email-draft-dialog{width:min(760px,calc(100% - 24px));max-height:calc(100vh - 24px);overflow:auto;padding:26px;border:0;border-radius:22px;background:#fff;color:var(--ink);box-shadow:0 30px 90px rgba(10,35,27,.3)}
+.email-draft-dialog::backdrop{background:rgba(9,31,25,.52);backdrop-filter:blur(4px)}
+.email-draft-dialog .dialog-header p:not(.eyebrow){max-width:62ch;margin:7px 0 0;color:var(--muted);line-height:1.5}
+.email-draft-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.email-draft-fields label{display:grid;gap:6px;color:var(--muted);font-size:.85rem;font-weight:700}.email-draft-fields label small{font-weight:500}.email-draft-fields input,.email-draft-fields textarea{width:100%;min-height:44px;border:1px solid #cddbd1;border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink);font:inherit}.email-draft-fields textarea{min-height:280px;resize:vertical;line-height:1.55}.email-draft-fields input:focus,.email-draft-fields textarea:focus{outline:3px solid rgba(21,106,88,.22);outline-offset:1px;border-color:var(--accent)}.email-draft-message{grid-column:1 / -1}.email-draft-status{min-height:1.5em;margin:14px 0 0;color:var(--muted);font-weight:700}
 .icon-button{flex:0 0 auto}
 .dialog-grid label small{font-weight:500}
 .detail-card h4{margin:16px 0 8px}
@@ -28,4 +32,4 @@ td small{display:block;margin-top:4px;color:var(--muted);font-size:.8rem;line-he
 @media(max-width:1100px){.filters{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:1100px){.discovery-form{grid-template-columns:repeat(2,minmax(0,1fr))}.discovery-form .button{width:max-content}}
 @media(max-width:900px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-search{grid-column:1 / -1}.activity-form{grid-template-columns:1fr 1fr}.activity-form .button{grid-column:1 / -1}.discovery-results{grid-template-columns:1fr}}
-@media(max-width:650px){.filters,.activity-form,.discovery-form{grid-template-columns:1fr}.filter-search,.activity-form .button{grid-column:auto}.related-list li{align-items:flex-start;flex-direction:column}.discovery-panel{padding:16px}.discovery-quick-actions .button,.discovery-form .button{width:100%}.discovery-card-heading{flex-direction:column}.discovery-card-heading .button{width:100%}}
+@media(max-width:650px){.filters,.activity-form,.discovery-form,.email-draft-fields{grid-template-columns:1fr}.filter-search,.activity-form .button,.email-draft-message{grid-column:auto}.related-list li{align-items:flex-start;flex-direction:column}.discovery-panel{padding:16px}.discovery-quick-actions .button,.discovery-form .button{width:100%}.discovery-card-heading{flex-direction:column}.discovery-card-heading .button{width:100%}.email-draft-dialog{padding:20px}.email-draft-dialog .dialog-actions{flex-direction:column-reverse}.email-draft-dialog .button{width:100%}}

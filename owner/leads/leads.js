@@ -11,6 +11,8 @@
     pipelineCounts: {},
     discoveryCandidates: [],
     pendingLeadId: new URLSearchParams(location.search).get("lead"),
+    emailDraftLeadId: null,
+    emailDraftLogged: false,
   };
   const demoLeads = [
     { id: "demo-1", businessName: "Lowcountry HVAC Demo", city: "Charleston", serviceArea: "Charleston", industry: "Home services", source: "new_business_radar", stage: "new", fitLevel: "high", fitReasons: ["No clear service-request form"], nextAction: "Review contact path", nextActionDue: "2026-08-28", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["New LLC filing"], dateConfidence: "confirmed", discoveredDate: "2026-08-20", lastVerifiedDate: "2026-08-25", createdAt: "2026-08-20", servicesInterest: ["landing page"], sourceUrls: [], publicSocialLinks: [] },
@@ -90,6 +92,7 @@
       <article class="discovery-card" data-candidate-id="${escapeHtml(candidate.id)}">
         <div class="discovery-card-heading"><div><span class="pill">${escapeHtml(stageLabel(candidate.fitLevel))} fit</span>${candidate.tidalConflictReviewRequired ? '<span class="pill pill-amber">Tidal review required</span>' : ""}<h3>${escapeHtml(candidate.businessName)}</h3><p>${escapeHtml(candidate.normalizedDomain || candidate.city || "Public web result")}</p></div><button class="button button-primary" type="button" data-add-candidate="${escapeHtml(candidate.id)}">Add to Radar</button></div>
         <p>Checked directly from this business website on ${escapeHtml(formatDate(candidate.lastVerifiedDate))}. Search-provider results are temporary and are not saved to the CRM.</p>
+        ${candidate.locationEvidence ? `<p><strong>Local match:</strong> ${escapeHtml(candidate.locationEvidence)}</p>` : ""}
         <div class="candidate-links"><a href="${escapeHtml(candidate.websiteUrl)}" target="_blank" rel="noreferrer">Open website</a>${(candidate.sourceUrls || []).map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open source</a>`).join("")}</div>
         <h4>Observed opportunities</h4><ul>${(candidate.fitReasons || []).map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
         ${candidate.launchSignals?.length ? `<p><strong>Launch signals:</strong> ${escapeHtml(candidate.launchSignals.join(", "))}</p>` : '<p class="muted"><strong>Launch date:</strong> Unknown; verify before treating this as a newly opened business.</p>'}
@@ -131,7 +134,7 @@
       contactStatus: "not_contacted",
       doNotContact: false,
       doNotContactReason: "",
-      internalNotes: "Discovered through an owner-triggered search. Saved details were independently checked against the business's public website. Verify all details before outreach.",
+      internalNotes: `Discovered through an owner-triggered search. Saved details were independently checked against the business's public website.${candidate.locationEvidence ? ` Local match: ${candidate.locationEvidence}.` : ""} Verify all details before outreach.`,
       archived: false,
       tidalConflictReviewRequired: Boolean(candidate.tidalConflictReviewRequired),
       tidalConflictReviewStatus: candidate.tidalConflictReviewRequired ? "pending" : "not_needed",
@@ -191,6 +194,7 @@
   function runQuickDiscovery(button) {
     const form = $("#discovery-form");
     form.elements.location.value = button.dataset.discoveryLocation || form.elements.location.value;
+    form.elements.businessTypes.value = button.dataset.discoveryTypes || "";
     form.elements.focus.value = button.dataset.discoveryFocus || form.elements.focus.value;
     form.requestSubmit();
   }
@@ -295,6 +299,96 @@
       ${payments.length ? `<h4>Payments</h4><ul class="related-list">${payments.map((item) => `<li><strong>${formatMoney(item.amount_cents, item.currency)}</strong><span>${escapeHtml(stageLabel(item.status))} · ${formatDate(item.paid_at || item.created_at)}</span></li>`).join("")}</ul>` : ""}`;
   };
 
+  const draftObservation = (lead) => {
+    const reason = fitReason(lead);
+    if (/viewport|smaller-screen/i.test(reason)) return "the mobile experience may be worth reviewing";
+    if (/rely on phone/i.test(reason)) return "the site appears to rely mainly on phone calls for new inquiries";
+    if (/service-request|intake form/i.test(reason)) return "there may be an opportunity to make service requests easier online";
+    if (/booking/i.test(reason)) return "there may be an opportunity to make scheduling easier online";
+    if (/legacy|fixed-width|http|insecure/i.test(reason)) return "the website may benefit from a focused modernization";
+    return reason === "Fit reason not recorded" ? "there may be a practical opportunity to improve the website or customer-intake path" : reason.charAt(0).toLowerCase() + reason.slice(1);
+  };
+
+  const emailDraftFor = (lead) => ({
+    to: lead.publicEmail || "",
+    subject: `A practical website idea for ${lead.businessName}`,
+    body: `Hello,\n\nI came across ${lead.businessName} while researching service businesses that may benefit from practical website or customer-intake improvements. I noticed ${draftObservation(lead)}.\n\nI run Palmetto Business Automation. I help small businesses create clearer websites, service-request forms, lead workflows, and simple business systems. If this is already working well for you, no action is needed. If it is something you want to improve, I would be glad to share a straightforward recommendation.\n\nWould a brief discovery call be useful?\n\nBest,\nRoss Wyatt\nPalmetto Business Automation\nhttps://palmettobusinessautomation.com`,
+  });
+
+  function openEmailDraft(lead) {
+    const draft = emailDraftFor(lead);
+    state.emailDraftLeadId = lead.id;
+    state.emailDraftLogged = false;
+    $("#email-draft-to").value = draft.to;
+    $("#email-draft-subject").value = draft.subject;
+    $("#email-draft-body").value = draft.body;
+    $("#email-draft-status").textContent = draft.to
+      ? "Draft created from verified lead details. Review it before opening your email app."
+      : "No public email is saved for this lead. Add a verified address before using the draft.";
+    $("#detail-dialog").close();
+    $("#email-draft-dialog").showModal();
+    requestAnimationFrame(() => (draft.to ? $("#email-draft-subject") : $("#email-draft-to")).focus());
+  }
+
+  async function recordEmailDraftActivity() {
+    if (state.emailDraftLogged || !state.emailDraftLeadId || isDemo()) return;
+    await api(LEADS_API, { method: "PUT", body: JSON.stringify({
+      action: "activity",
+      id: state.emailDraftLeadId,
+      activityType: "email_drafted",
+      note: "Email draft prepared for manual review. No email was sent.",
+    }) });
+    state.emailDraftLogged = true;
+  }
+
+  const emailDraftValues = () => ({
+    to: $("#email-draft-to").value.trim(),
+    subject: $("#email-draft-subject").value.trim(),
+    body: $("#email-draft-body").value.trim(),
+  });
+
+  async function copyEmailDraft() {
+    const draft = emailDraftValues();
+    const status = $("#email-draft-status");
+    try {
+      await navigator.clipboard.writeText(`${draft.to ? `To: ${draft.to}\n` : ""}Subject: ${draft.subject}\n\n${draft.body}`);
+    } catch {
+      status.textContent = "The draft could not be copied. Select the text manually and try again.";
+      return;
+    }
+    try {
+      await recordEmailDraftActivity();
+      status.textContent = "Draft copied. It is still unsent and ready for your review.";
+    } catch {
+      status.textContent = "Draft copied, but its activity could not be recorded. No email was sent.";
+    }
+  }
+
+  async function openDraftInEmailApp() {
+    const draft = emailDraftValues();
+    const recipient = $("#email-draft-to");
+    if (draft.to && !recipient.checkValidity()) {
+      $("#email-draft-status").textContent = "Enter a valid public business email address first.";
+      recipient.focus();
+      return;
+    }
+    try {
+      await recordEmailDraftActivity();
+    } catch {
+      $("#email-draft-status").textContent = "The draft is ready, but its activity could not be recorded. Try again.";
+      return;
+    }
+    const mailto = `mailto:${draft.to}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
+    $("#email-draft-dialog").close();
+    window.location.href = mailto;
+  }
+
+  async function restoreLeadAfterDraft() {
+    const leadId = state.emailDraftLeadId;
+    state.emailDraftLeadId = null;
+    if (leadId) await openDetail(leadId);
+  }
+
   function renderDetail(body) {
     const lead = body.lead;
     $("#detail-title").textContent = lead.businessName;
@@ -303,6 +397,7 @@
       <div class="detail-actions">
         <button class="button button-primary" type="button" data-detail-action="next">Set Next Action</button>
         <button class="button button-secondary" type="button" data-detail-action="edit">Edit Lead</button>
+        <button class="button button-secondary" type="button" data-detail-action="draft_email">Create Email Draft</button>
         ${lead.nextAction ? `<button class="button button-secondary" type="button" data-detail-action="${lead.nextActionCompleted ? "reopen" : "complete"}">${lead.nextActionCompleted ? "Reopen Next Action" : "Complete Next Action"}</button>` : ""}
         <button class="button button-secondary" type="button" data-detail-action="do_not_contact">Mark Do Not Contact</button>
         <button class="button button-secondary" type="button" data-detail-action="archive">Archive Lead</button>
@@ -349,6 +444,10 @@
     });
     $$("[data-detail-action]", $("#detail-content")).forEach((button) => button.addEventListener("click", async () => {
       const action = button.dataset.detailAction;
+      if (action === "draft_email") {
+        openEmailDraft(lead);
+        return;
+      }
       if (action === "edit" || action === "next") {
         $("#detail-dialog").close();
         openLeadForm(lead, action === "next" ? "nextAction" : "businessName");
@@ -476,9 +575,14 @@
   $("#close-lead").addEventListener("click", () => $("#lead-dialog").close());
   $("#cancel-lead").addEventListener("click", () => $("#lead-dialog").close());
   $("#close-detail").addEventListener("click", () => $("#detail-dialog").close());
+  $("#close-email-draft").addEventListener("click", () => $("#email-draft-dialog").close());
+  $("#cancel-email-draft").addEventListener("click", () => $("#email-draft-dialog").close());
+  $("#copy-email-draft").addEventListener("click", copyEmailDraft);
+  $("#open-email-app").addEventListener("click", openDraftInEmailApp);
+  $("#email-draft-dialog").addEventListener("close", restoreLeadAfterDraft);
   $("#lead-form").addEventListener("submit", saveLead);
   $("#discovery-form").addEventListener("submit", runDiscovery);
-  $$('[data-discovery-location]').forEach((button) => button.addEventListener("click", () => runQuickDiscovery(button)));
+  $$('.discovery-quick-actions [data-discovery-focus]').forEach((button) => button.addEventListener("click", () => runQuickDiscovery(button)));
   $$(".view-tab").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$('[data-summary]').forEach((button) => button.addEventListener("click", () => {
     $("#filters-form").reset();
