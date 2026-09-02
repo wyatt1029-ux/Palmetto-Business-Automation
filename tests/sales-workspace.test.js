@@ -88,6 +88,23 @@ test("lead discovery creates targeted service-and-location query lanes", () => {
   assert.ok(queries.every((query) => query.includes("-franchise")));
 });
 
+test("new-prospect discovery does not depend only on grand-opening language", () => {
+  const queries = buildDiscoveryQueries(validateDiscoveryInput({
+    location: "Charleston, SC",
+    focus: "new_business",
+    maxResults: 10,
+    businessTypes: ["electrician", "tree service"],
+  }));
+  assert.equal(queries.length, 1);
+  assert.match(queries[0], /"locally owned"/);
+  assert.match(queries[0], /services/);
+
+  const localTrades = analyzeBusinessPage(`<!doctype html><html><head><title>Local Trades</title></head><body><p>Charleston electrical work, tree care, and lawn care.</p></body></html>`, "https://local-trades.example/");
+  assert.equal(pageMatchesBusinessTypes(localTrades, ["electrician"]), true);
+  assert.equal(pageMatchesBusinessTypes(localTrades, ["tree service"]), true);
+  assert.equal(pageMatchesBusinessTypes(localTrades, ["landscaping"]), true);
+});
+
 test("lead discovery blocks unsafe crawl targets", () => {
   assert.equal(safePublicUrl("http://127.0.0.1/admin"), null);
   assert.equal(safePublicUrl("http://192.168.1.10/"), null);

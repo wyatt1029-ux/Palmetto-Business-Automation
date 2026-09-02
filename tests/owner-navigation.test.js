@@ -49,7 +49,7 @@ test("owner record pages remain private and use the protected API", async () => 
   assert.doesNotMatch(leads, /sendEmail|emailjs|\/api\/send/);
   assert.match(leadsHtml, /Find Charleston service businesses/);
   assert.match(leadsHtml, /Find South Carolina service businesses/);
-  assert.match(leadsHtml, /Find newly opened businesses in this area/);
+  assert.match(leadsHtml, /Find new local prospects in this area/);
   assert.match(leadsHtml, /data-discovery-focus="new_business"/);
   assert.match(leadsHtml, /value="both" selected/);
   assert.match(leadsHtml, /Search results are temporary suggestions—not saved leads/);

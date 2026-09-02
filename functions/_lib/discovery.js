@@ -17,6 +17,8 @@ const launchPatterns = [
   [/\bnew(?:ly)? opened\b/i, "Newly opened business"],
   [/\bnew business\b/i, "New business announcement"],
   [/\bopening soon\b/i, "Opening soon announcement"],
+  [/\bnow serving\b/i, "Now serving announcement"],
+  [/\bnew(?:ly)? established\b/i, "Newly established business"],
   [/\blaunch(?:ed|ing)?\b/i, "Business launch announcement"],
 ];
 
@@ -46,7 +48,7 @@ export function buildDiscoveryQueries({ location, focus, businessTypes }) {
   for (const group of typeGroups) {
     const typeText = group.map((type) => `"${type}"`).join(" OR ");
     if (focus !== "website_opportunity") {
-      queries.push(`(\"now open\" OR \"grand opening\" OR \"new business\" OR \"opening soon\") \"${location}\" (${typeText}) ${exclusions}`);
+      queries.push(`(${typeText}) \"${location}\" (\"now open\" OR \"grand opening\" OR \"opening soon\" OR \"now serving\" OR \"locally owned\" OR \"family owned\" OR services) -directory -magazine -list ${exclusions}`);
     }
     if (focus !== "new_business") {
       queries.push(`(${typeText}) \"${location}\" (services OR repair OR estimate OR contact) -directory -magazine -list ${exclusions}`);
@@ -207,6 +209,13 @@ const typeAliases = new Map([
   ["boat repair", ["boat repair", "marine service", "outboard repair"]],
   ["auto service", ["auto service", "auto repair", "automotive", "mechanic"]],
   ["auto repair", ["auto repair", "automotive", "mechanic"]],
+  ["electrician", ["electrician", "electrical", "electric"]],
+  ["appliance repair", ["appliance repair", "appliance service", "appliance"]],
+  ["handyman", ["handyman", "home repair", "property maintenance"]],
+  ["tree service", ["tree service", "tree care", "arborist"]],
+  ["landscaping", ["landscaping", "landscape", "lawn care"]],
+  ["towing", ["towing", "tow truck", "roadside assistance"]],
+  ["contractor", ["contractor", "construction", "builder", "remodeling"]],
 ]);
 
 const containsPhrase = (haystack, needle) => {
