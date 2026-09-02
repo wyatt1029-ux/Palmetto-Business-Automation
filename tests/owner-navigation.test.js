@@ -40,6 +40,12 @@ test("owner record pages remain private and use the protected API", async () => 
   assert.match(leads, /Create Email Draft/);
   assert.match(leads, /activityType: "email_drafted"/);
   assert.match(leads, /No email was sent/);
+  assert.match(leads, /websiteUrlFromRecipient/);
+  assert.match(leads, /That is a website address, not an email/);
+  assert.match(leadsHtml, /A website address cannot receive email/);
+  assert.match(leadsHtml, /id="email-draft-website"[^>]+target="_blank"/);
+  assert.match(leads, /lead\.websiteUrl \|\| lead\.publicContactFormUrl/);
+  assert.match(leadsHtml, /id="open-email-app"[^>]+disabled/);
   assert.doesNotMatch(leads, /sendEmail|emailjs|\/api\/send/);
   assert.match(leadsHtml, /Find plumbers in this area/);
   assert.match(leadsHtml, /Find marine services in this area/);

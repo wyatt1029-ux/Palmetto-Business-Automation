@@ -13,9 +13,10 @@
     pendingLeadId: new URLSearchParams(location.search).get("lead"),
     emailDraftLeadId: null,
     emailDraftLogged: false,
+    emailDraftSourceUrl: null,
   };
   const demoLeads = [
-    { id: "demo-1", businessName: "Lowcountry HVAC Demo", city: "Charleston", serviceArea: "Charleston", industry: "Home services", source: "new_business_radar", stage: "new", fitLevel: "high", fitReasons: ["No clear service-request form"], nextAction: "Review contact path", nextActionDue: "2026-08-28", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["New LLC filing"], dateConfidence: "confirmed", discoveredDate: "2026-08-20", lastVerifiedDate: "2026-08-25", createdAt: "2026-08-20", servicesInterest: ["landing page"], sourceUrls: [], publicSocialLinks: [] },
+    { id: "demo-1", businessName: "Lowcountry HVAC Demo", city: "Charleston", serviceArea: "Charleston", industry: "Home services", source: "new_business_radar", stage: "new", fitLevel: "high", fitReasons: ["No clear service-request form"], nextAction: "Review contact path", nextActionDue: "2026-08-28", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["New LLC filing"], dateConfidence: "confirmed", discoveredDate: "2026-08-20", lastVerifiedDate: "2026-08-25", createdAt: "2026-08-20", websiteUrl: "https://lowcountry-hvac.example/", servicesInterest: ["landing page"], sourceUrls: [], publicSocialLinks: [] },
     { id: "demo-2", businessName: "Harbor Route Marine Demo", city: "Mount Pleasant", serviceArea: "Charleston", industry: "Marine service", source: "researched", stage: "contacted", fitLevel: "medium", fitReasons: ["Website has phone only; no lead workflow"], nextAction: "Complete conflict review", nextActionDue: "2026-08-27", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewRequired: true, tidalConflictReviewStatus: "pending", archived: false, launchSignals: ["New website"], dateConfidence: "unknown", discoveredDate: "2026-08-18", lastVerifiedDate: "2026-08-24", createdAt: "2026-08-18", servicesInterest: ["workflow"], sourceUrls: [], publicSocialLinks: [] },
     { id: "demo-3", businessName: "Palmetto Bookkeeping Demo", city: "Myrtle Beach", serviceArea: "Grand Strand", industry: "Professional services", source: "website_inquiry", stage: "discovery_scheduled", fitLevel: "high", fitReasons: ["Payment or intake workflow may be fragmented"], nextAction: "Prepare discovery notes", nextActionDue: "2026-09-02", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "replied", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["Now open social post"], dateConfidence: "estimated", discoveredDate: "2026-08-15", lastVerifiedDate: "2026-08-23", createdAt: "2026-08-15", servicesInterest: ["website", "workflow"], sourceUrls: [], publicSocialLinks: [] },
   ];
@@ -319,12 +320,11 @@
     const draft = emailDraftFor(lead);
     state.emailDraftLeadId = lead.id;
     state.emailDraftLogged = false;
+    state.emailDraftSourceUrl = lead.websiteUrl || lead.publicContactFormUrl || null;
     $("#email-draft-to").value = draft.to;
     $("#email-draft-subject").value = draft.subject;
     $("#email-draft-body").value = draft.body;
-    $("#email-draft-status").textContent = draft.to
-      ? "Draft created from verified lead details. Review it before opening your email app."
-      : "No public email is saved for this lead. Add a verified address before using the draft.";
+    refreshEmailDraftRecipientState();
     $("#detail-dialog").close();
     $("#email-draft-dialog").showModal();
     requestAnimationFrame(() => (draft.to ? $("#email-draft-subject") : $("#email-draft-to")).focus());
@@ -347,6 +347,50 @@
     body: $("#email-draft-body").value.trim(),
   });
 
+  const websiteUrlFromRecipient = (value) => {
+    const trimmed = String(value || "").trim();
+    if (!trimmed || trimmed.includes("@")) return null;
+    try {
+      const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+    } catch {
+      return null;
+    }
+  };
+
+  function refreshEmailDraftRecipientState() {
+    const recipient = $("#email-draft-to");
+    const status = $("#email-draft-status");
+    const emailAction = $("#open-email-app");
+    const sourceAction = $("#open-email-source");
+    const websiteField = $("#email-draft-website");
+    const value = recipient.value.trim();
+    const pastedWebsite = websiteUrlFromRecipient(value);
+    const sourceUrl = pastedWebsite || state.emailDraftSourceUrl;
+    websiteField.textContent = state.emailDraftSourceUrl || "Not saved";
+    if (state.emailDraftSourceUrl) websiteField.href = state.emailDraftSourceUrl;
+    else websiteField.removeAttribute("href");
+    recipient.setCustomValidity("");
+    if (pastedWebsite) recipient.setCustomValidity("Enter an email address, not a website URL.");
+    const validEmail = Boolean(value) && recipient.checkValidity() && !pastedWebsite;
+    recipient.setAttribute("aria-invalid", value && !validEmail ? "true" : "false");
+    emailAction.disabled = !validEmail;
+    sourceAction.hidden = !sourceUrl;
+    if (sourceUrl) {
+      sourceAction.href = sourceUrl;
+      sourceAction.textContent = pastedWebsite ? "Open This Website" : (state.emailDraftSourceUrl === sourceUrl && /contact|quote|estimate|request|inquir/i.test(sourceUrl) ? "Open Contact Page" : "Open Business Website");
+    }
+    if (pastedWebsite) {
+      status.textContent = "That is a website address, not an email. Open the website to find a verified public email such as name@business.com.";
+    } else if (!value) {
+      status.textContent = "No public email is saved for this lead. The saved website is loaded above—open it to find a verified email, or copy the draft for later.";
+    } else if (!validEmail) {
+      status.textContent = "Enter a complete email address such as name@business.com.";
+    } else {
+      status.textContent = "Valid email address. Review the draft, then open it in your email app.";
+    }
+  }
+
   async function copyEmailDraft() {
     const draft = emailDraftValues();
     const status = $("#email-draft-status");
@@ -367,8 +411,8 @@
   async function openDraftInEmailApp() {
     const draft = emailDraftValues();
     const recipient = $("#email-draft-to");
-    if (draft.to && !recipient.checkValidity()) {
-      $("#email-draft-status").textContent = "Enter a valid public business email address first.";
+    refreshEmailDraftRecipientState();
+    if (!draft.to || !recipient.checkValidity()) {
       recipient.focus();
       return;
     }
@@ -386,6 +430,7 @@
   async function restoreLeadAfterDraft() {
     const leadId = state.emailDraftLeadId;
     state.emailDraftLeadId = null;
+    state.emailDraftSourceUrl = null;
     if (leadId) await openDetail(leadId);
   }
 
@@ -579,6 +624,7 @@
   $("#cancel-email-draft").addEventListener("click", () => $("#email-draft-dialog").close());
   $("#copy-email-draft").addEventListener("click", copyEmailDraft);
   $("#open-email-app").addEventListener("click", openDraftInEmailApp);
+  $("#email-draft-to").addEventListener("input", refreshEmailDraftRecipientState);
   $("#email-draft-dialog").addEventListener("close", restoreLeadAfterDraft);
   $("#lead-form").addEventListener("submit", saveLead);
   $("#discovery-form").addEventListener("submit", runDiscovery);

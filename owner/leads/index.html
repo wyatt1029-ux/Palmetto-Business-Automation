@@ -135,12 +135,13 @@
     <dialog class="email-draft-dialog" id="email-draft-dialog" aria-labelledby="email-draft-title">
       <div class="dialog-header"><div><p class="eyebrow">Manual outreach helper</p><h2 id="email-draft-title">Create Email Draft</h2><p>Review and edit every detail. PBA will not send this email automatically.</p></div><button class="icon-button" id="close-email-draft" type="button" aria-label="Close email draft">×</button></div>
       <div class="email-draft-fields">
-        <label>To <small>Public business email, when available</small><input id="email-draft-to" type="email" autocomplete="off" placeholder="Add a public business email" /></label>
+        <div class="email-draft-source"><strong>Business website</strong><small>Loaded from this lead’s saved public information</small><a id="email-draft-website" target="_blank" rel="noreferrer">Not saved</a></div>
+        <label>To <small id="email-draft-to-help">Enter an email containing @. A website address cannot receive email.</small><input id="email-draft-to" type="email" inputmode="email" autocomplete="off" aria-describedby="email-draft-to-help email-draft-status" placeholder="name@business.com" /></label>
         <label>Subject<input id="email-draft-subject" maxlength="200" /></label>
         <label class="email-draft-message">Message<textarea id="email-draft-body" maxlength="5000"></textarea></label>
       </div>
       <p class="email-draft-status" id="email-draft-status" aria-live="polite"></p>
-      <div class="dialog-actions"><button class="button button-secondary" id="cancel-email-draft" type="button">Close</button><button class="button button-secondary" id="copy-email-draft" type="button">Copy Draft</button><button class="button button-primary" id="open-email-app" type="button">Open in Email App</button></div>
+      <div class="dialog-actions"><button class="button button-secondary" id="cancel-email-draft" type="button">Close</button><a class="button button-secondary" id="open-email-source" target="_blank" rel="noreferrer" hidden>Open Business Website</a><button class="button button-secondary" id="copy-email-draft" type="button">Copy Draft</button><button class="button button-primary" id="open-email-app" type="button" disabled>Open in Email App</button></div>
     </dialog>
     <script src="/owner/leads/leads.js" defer></script>
   </body>
