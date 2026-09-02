@@ -38,15 +38,19 @@ export function validateDiscoveryInput(data = {}) {
 }
 
 export function buildDiscoveryQueries({ location, focus, businessTypes }) {
-  const typeText = businessTypes.length ? businessTypes.map((type) => `"${type}"`).join(" OR ") : "\"service business\" OR contractor OR \"local business\"";
   const exclusions = "-site:yelp.com -site:facebook.com -site:instagram.com -site:linkedin.com -site:yellowpages.com -site:angi.com -site:homeadvisor.com -site:thumbtack.com -site:houzz.com -site:buildzoom.com -franchise -nationwide -corporate -\"find a location\"";
   const queries = [];
-  if (focus !== "website_opportunity") {
-    queries.push(`(\"now open\" OR \"grand opening\" OR \"new business\" OR \"opening soon\") \"${location}\" (${typeText}) ${exclusions}`);
-  }
-  if (focus !== "new_business") {
-    queries.push(`(${typeText}) \"${location}\" (\"locally owned\" OR \"family owned\" OR \"serving ${location}\") -directory -magazine ${exclusions}`);
-    queries.push(`(${typeText}) \"${location}\" (booking OR appointment OR estimate) -directory -magazine ${exclusions}`);
+  const typeGroups = businessTypes.length
+    ? Array.from({ length: Math.ceil(businessTypes.length / 2) }, (_, index) => businessTypes.slice(index * 2, index * 2 + 2))
+    : [["service business", "contractor"], ["local business"]];
+  for (const group of typeGroups) {
+    const typeText = group.map((type) => `"${type}"`).join(" OR ");
+    if (focus !== "website_opportunity") {
+      queries.push(`(\"now open\" OR \"grand opening\" OR \"new business\" OR \"opening soon\") \"${location}\" (${typeText}) ${exclusions}`);
+    }
+    if (focus !== "new_business") {
+      queries.push(`(${typeText}) \"${location}\" (services OR repair OR estimate OR contact) -directory -magazine -list ${exclusions}`);
+    }
   }
   return queries;
 }
@@ -260,11 +264,17 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
   const page = safePublicUrl(pageUrl);
   const hasViewport = /<meta[^>]+name=["']viewport["']/i.test(source);
   const hasForm = /<form\b/i.test(source);
+  const forms = source.match(/<form\b[^>]*>[\s\S]*?<\/form>/gi) || [];
+  const formMarkup = forms.join(" ");
+  const hasFileUpload = /<input\b[^>]*type\s*=\s*["']file["']/i.test(formMarkup);
+  const hasStructuredIntake = /(?:name|id|placeholder)\s*=\s*["'][^"']*(?:service|project|job|issue|estimate|vehicle|boat|address|details|photo|upload)[^"']*["']/i.test(formMarkup)
+    || /<(?:select|textarea)\b/i.test(formMarkup);
   const hasPhone = /href\s*=\s*["']tel:/i.test(source);
   const hasEmail = /href\s*=\s*["']mailto:/i.test(source);
   const hasContactLink = /href\s*=\s*["'][^"']*(contact|quote|estimate|request|inquir)[^"']*["']/i.test(source);
   const hasBooking = /href\s*=\s*["'][^"']*(book|schedule|appointment|calendly)[^"']*["']/i.test(source);
   const hasPayment = /href\s*=\s*["'][^"']*(pay|checkout|stripe|paypal|squareup)[^"']*["']/i.test(source);
+  const hasStatusOrPortal = /\b(?:customer|client) portal\b|\b(?:track|check|view) (?:my |your )?(?:job|estimate|request|service|status)\b/i.test(searchableText);
   const usesHttps = page?.protocol === "https:";
   const hasMixedContent = usesHttps && /<(?:script|img|link|iframe|audio|video|source)\b[^>]+(?:src|href)\s*=\s*["']http:\/\//i.test(source);
   const hasLegacyMarkup = /<(?:frameset|frame|font|center|marquee|applet)(?:\s|\/?>)|classid\s*=\s*["'][^"']*(?:clsid|shockwave)|<!--\[if\s+(?:lt|lte|gt|gte)?\s*IE\b/i.test(source);
@@ -274,6 +284,11 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     || /(?:["';\s])width\s*:\s*(?:[6-9]\d{2}|1[0-4]\d{2})px\b/i.test(tag)
   ));
   const commerceContext = /\b(deposit|invoice|payment|checkout|order online|pay online)\b/i.test(lower);
+  const placeholderCopy = /\b(?:lorem ipsum|your company name|insert (?:text|copy) here|sample text|website coming soon)\b/i.test(searchableText);
+  const footerText = stripTags((source.match(/<footer\b[^>]*>[\s\S]*?<\/footer>/gi) || []).join(" "));
+  const currentYear = new Date().getUTCFullYear();
+  const footerYears = [...footerText.matchAll(/\b(20\d{2})\b/g)].map((match) => Number(match[1])).filter((year) => year <= currentYear + 1);
+  const latestFooterYear = footerYears.length ? Math.max(...footerYears) : null;
   const fitReasons = [];
   const servicesInterest = [];
   if (!hasViewport) {
@@ -299,6 +314,9 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
   if (!hasForm) {
     fitReasons.push(hasPhone ? "Website appears to rely on phone contact" : "No service-request or intake form found");
     servicesInterest.push("lead workflow");
+  } else if (!hasStructuredIntake) {
+    fitReasons.push("Public form appears to collect only general contact details");
+    servicesInterest.push("customer intake");
   }
   if (!hasContactLink && !hasForm && !hasPhone && !hasEmail) {
     fitReasons.push("No clear contact or service-request path found");
@@ -311,6 +329,14 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
   if (commerceContext && !hasPayment) {
     fitReasons.push("Payment information appears separate from an online payment flow");
     servicesInterest.push("payment workflow");
+  }
+  if (placeholderCopy) {
+    fitReasons.push("Placeholder or unfinished website copy was found");
+    servicesInterest.push("website");
+  }
+  if (latestFooterYear && latestFooterYear <= currentYear - 4) {
+    fitReasons.push(`Footer year appears to be ${latestFooterYear}; verify that site information is current`);
+    servicesInterest.push("website");
   }
   const title = stripTags(source.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
   const identity = structuredBusinessIdentity(source)
@@ -346,11 +372,16 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     checks: {
       hasViewport,
       hasForm,
+      hasFileUpload,
+      hasStructuredIntake,
       hasPhone,
       hasEmail,
       hasContactLink,
       hasBooking,
       hasPayment,
+      hasStatusOrPortal,
+      hasPlaceholderCopy: placeholderCopy,
+      latestFooterYear,
       usesHttps,
       hasSecureAssets: !hasMixedContent,
       hasModernMarkup: !hasLegacyMarkup,
@@ -358,6 +389,20 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     },
   };
 }
+
+export const publicActivitySignal = (analysis) => {
+  const hasPublicContact = Boolean(analysis.publicPhone || analysis.publicEmail || analysis.publicContactFormUrl || analysis.checks?.hasContactLink);
+  const currentYear = new Date().getUTCFullYear();
+  const visiblyStale = Boolean(analysis.checks?.hasPlaceholderCopy)
+    || (analysis.checks?.latestFooterYear && analysis.checks.latestFooterYear <= currentYear - 4);
+  if (hasPublicContact && analysis.locationDetails?.hasLocalAddress && !visiblyStale) {
+    return { level: "strong", evidence: "Working official website with local business details and a public contact path" };
+  }
+  if (hasPublicContact) {
+    return { level: "moderate", evidence: "Working website and a public contact path were found; current activity still needs confirmation" };
+  }
+  return { level: "verify_first", evidence: "Website was reachable, but a current public contact path was not confirmed" };
+};
 
 const cleanBusinessName = (value) => {
   const name = stripTags(value).split(/\s+[|–—]\s+|\s+-\s+/)[0].replace(/\s+(home|official site)$/i, "").trim();
@@ -452,6 +497,7 @@ export async function discoverBusinesses(input, env = {}) {
     if (!locationMatch.matched) return { inspected: true, candidate: null };
     const independentMatch = independentBusinessCheck(analysis);
     if (!independentMatch.matched) return { inspected: true, candidate: null };
+    const activitySignal = publicActivitySignal(analysis);
     const domain = normalizeDomain(inspected.url);
     const businessName = analysis.businessName
       || (analysis.genericPageTitle ? domain : cleanBusinessName(analysis.title || domain.split(".")[0]));
@@ -482,6 +528,8 @@ export async function discoverBusinesses(input, env = {}) {
       publicContactFormUrl: analysis.publicContactFormUrl,
       locationEvidence: locationMatch.evidence,
       independentBusinessEvidence: independentMatch.evidence,
+      activitySignal: activitySignal.level,
+      activitySignalEvidence: activitySignal.evidence,
       lastVerifiedDate: new Date().toISOString().slice(0, 10),
       tidalConflictReviewRequired: marine,
       tidalConflictReviewStatus: marine ? "pending" : "not_needed",

@@ -53,6 +53,10 @@ test("owner record pages remain private and use the protected API", async () => 
   assert.match(leadsHtml, /Find plumbers in this area/);
   assert.match(leadsHtml, /Find marine services in this area/);
   assert.match(leadsHtml, /Find auto services in this area/);
+  assert.match(leadsHtml, /Activity strength is a public-web estimate/);
+  assert.match(leads, /Public activity signal/);
+  assert.match(leads, /hasStructuredIntake/);
+  assert.match(leads, /hasStatusOrPortal/);
   assert.match(leads, /discovery-quick-actions \[data-discovery-focus\]/);
 });
 
