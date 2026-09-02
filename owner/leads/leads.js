@@ -94,6 +94,7 @@
         <div class="discovery-card-heading"><div><span class="pill">${escapeHtml(stageLabel(candidate.fitLevel))} fit</span>${candidate.tidalConflictReviewRequired ? '<span class="pill pill-amber">Tidal review required</span>' : ""}<h3>${escapeHtml(candidate.businessName)}</h3><p>${escapeHtml(candidate.normalizedDomain || candidate.city || "Public web result")}</p></div><button class="button button-primary" type="button" data-add-candidate="${escapeHtml(candidate.id)}">Add to Radar</button></div>
         <p>Checked directly from this business website on ${escapeHtml(formatDate(candidate.lastVerifiedDate))}. Search-provider results are temporary and are not saved to the CRM.</p>
         ${candidate.locationEvidence ? `<p><strong>Local match:</strong> ${escapeHtml(candidate.locationEvidence)}</p>` : ""}
+        ${candidate.independentBusinessEvidence ? `<p><strong>Independent-business check:</strong> ${escapeHtml(candidate.independentBusinessEvidence)}</p>` : ""}
         <div class="candidate-links"><a href="${escapeHtml(candidate.websiteUrl)}" target="_blank" rel="noreferrer">Open website</a>${(candidate.sourceUrls || []).map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open source</a>`).join("")}</div>
         <h4>Observed opportunities</h4><ul>${(candidate.fitReasons || []).map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
         ${candidate.launchSignals?.length ? `<p><strong>Launch signals:</strong> ${escapeHtml(candidate.launchSignals.join(", "))}</p>` : '<p class="muted"><strong>Launch date:</strong> Unknown; verify before treating this as a newly opened business.</p>'}
@@ -135,7 +136,7 @@
       contactStatus: "not_contacted",
       doNotContact: false,
       doNotContactReason: "",
-      internalNotes: `Discovered through an owner-triggered search. Saved details were independently checked against the business's public website.${candidate.locationEvidence ? ` Local match: ${candidate.locationEvidence}.` : ""} Verify all details before outreach.`,
+      internalNotes: `Discovered through an owner-triggered search. Saved details were independently checked against the business's public website.${candidate.locationEvidence ? ` Local match: ${candidate.locationEvidence}.` : ""}${candidate.independentBusinessEvidence ? ` Independent-business check: ${candidate.independentBusinessEvidence}.` : ""} Verify all details before outreach.`,
       archived: false,
       tidalConflictReviewRequired: Boolean(candidate.tidalConflictReviewRequired),
       tidalConflictReviewStatus: candidate.tidalConflictReviewRequired ? "pending" : "not_needed",

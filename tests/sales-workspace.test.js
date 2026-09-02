@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeBusinessName, normalizeDomain, serializeLead, syncLeadFromIntake, validateLeadInput } from "../functions/_lib/leads.js";
-import { analyzeBusinessPage, buildDiscoveryQueries, discoverBusinesses, pageMatchesBusinessTypes, pageMatchesLocation, safePublicUrl, validateDiscoveryInput } from "../functions/_lib/discovery.js";
+import { analyzeBusinessPage, buildDiscoveryQueries, discoverBusinesses, independentBusinessCheck, pageMatchesBusinessTypes, pageMatchesLocation, safePublicUrl, validateDiscoveryInput } from "../functions/_lib/discovery.js";
 import { requireOwner } from "../functions/_lib/security.js";
 import { readFile } from "node:fs/promises";
 import { __test as leadApi, onRequestGet as getLeads, onRequestPost as postLead, onRequestPut as putLead } from "../functions/api/leads.js";
@@ -138,6 +138,17 @@ test("discovery verifies requested trade and local service-area evidence", () =>
   assert.equal(pageMatchesLocation(webOnly, "Charleston, SC").matched, false);
 });
 
+test("discovery rejects franchises and national chains while preserving local operators", () => {
+  const franchise = analyzeBusinessPage(`<!doctype html><html><head><title>National Plumbing - Charleston</title><script type="application/ld+json">{"@type":"Plumber","name":"National Plumbing Charleston","address":{"addressLocality":"Charleston","addressRegion":"SC"},"parentOrganization":{"name":"National Plumbing Group"}}</script></head><body><p>Our Charleston franchise is part of a nationwide network. Find a location.</p></body></html>`, "https://national.example/locations/charleston");
+  assert.equal(pageMatchesLocation(franchise, "Charleston, SC").matched, true);
+  assert.equal(independentBusinessCheck(franchise).matched, false);
+  assert.ok(franchise.chainSignals.length >= 1);
+
+  const local = analyzeBusinessPage(`<!doctype html><html><head><title>Harbor Plumbing</title><script type="application/ld+json">{"@type":"LocalBusiness","name":"Harbor Plumbing","address":{"addressLocality":"Charleston","addressRegion":"SC"}}</script></head><body><p>Family owned Charleston plumbing service.</p></body></html>`, "https://harbor.example/");
+  assert.equal(independentBusinessCheck(local).matched, true);
+  assert.match(independentBusinessCheck(local).evidence, /Local business address/);
+});
+
 test("owner-triggered discovery searches public results and returns reviewable candidates", async () => {
   const searched = [];
   const result = await discoverBusinesses({ location: "843 area code", businessTypes: ["home services"], focus: "both", maxResults: 5 }, {
@@ -193,6 +204,24 @@ test("website-opportunity discovery rejects directories, generic quote pages, an
     __TEST_FETCH: async (url) => new Response(pages.get(url), { headers: { "content-type": "text/html" } }),
   });
   assert.deepEqual(result.candidates, []);
+});
+
+test("discovery oversamples past chain results to find qualified local businesses", async () => {
+  const urls = Array.from({ length: 6 }, (_, index) => `https://candidate-${index}.example/`);
+  const result = await discoverBusinesses({ location: "Charleston, SC", businessTypes: ["plumber"], focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => urls.map((url) => ({ title: url, url })),
+    __TEST_FETCH: async (url) => {
+      const index = Number(url.match(/candidate-(\d+)/)?.[1]);
+      const html = index < 5
+        ? `<!doctype html><html><head><title>National Plumbing ${index}</title></head><body><p>Charleston plumbing franchise serving customers nationwide. Find a location.</p></body></html>`
+        : `<!doctype html><html><head><title>Harbor Pipeworks</title><script type="application/ld+json">{"@type":"LocalBusiness","name":"Harbor Pipeworks","address":{"addressLocality":"Charleston","addressRegion":"SC"}}</script></head><body><p>Family owned Charleston plumbing.</p><a href="tel:+18435550123">Call</a></body></html>`;
+      return new Response(html, { headers: { "content-type": "text/html" } });
+    },
+  });
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].businessName, "Harbor Pipeworks");
+  assert.match(result.candidates[0].independentBusinessEvidence, /Local business address/);
+  assert.match(result.coverage, /returned 1 qualified local business/);
 });
 
 test("discovery API is owner-only and requires configured search data", async () => {

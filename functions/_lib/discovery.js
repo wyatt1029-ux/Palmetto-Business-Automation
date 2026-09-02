@@ -1,4 +1,4 @@
-import { normalizeBusinessName, normalizeDomain } from "./leads.js";
+import { normalizeDomain } from "./leads.js";
 
 export const DISCOVERY_FOCUSES = ["both", "new_business", "website_opportunity"];
 export const DISCOVERY_RESULT_LIMITS = [5, 10, 20];
@@ -39,13 +39,13 @@ export function validateDiscoveryInput(data = {}) {
 
 export function buildDiscoveryQueries({ location, focus, businessTypes }) {
   const typeText = businessTypes.length ? businessTypes.map((type) => `"${type}"`).join(" OR ") : "\"service business\" OR contractor OR \"local business\"";
-  const exclusions = "-site:yelp.com -site:facebook.com -site:instagram.com -site:linkedin.com -site:yellowpages.com -site:angi.com -site:homeadvisor.com -site:thumbtack.com -site:houzz.com -site:buildzoom.com";
+  const exclusions = "-site:yelp.com -site:facebook.com -site:instagram.com -site:linkedin.com -site:yellowpages.com -site:angi.com -site:homeadvisor.com -site:thumbtack.com -site:houzz.com -site:buildzoom.com -franchise -nationwide -corporate -\"find a location\"";
   const queries = [];
   if (focus !== "website_opportunity") {
     queries.push(`(\"now open\" OR \"grand opening\" OR \"new business\" OR \"opening soon\") \"${location}\" (${typeText}) ${exclusions}`);
   }
   if (focus !== "new_business") {
-    queries.push(`(${typeText}) \"${location}\" (contact OR services OR \"request a quote\") -directory -magazine ${exclusions}`);
+    queries.push(`(${typeText}) \"${location}\" (\"locally owned\" OR \"family owned\" OR \"serving ${location}\") -directory -magazine ${exclusions}`);
     queries.push(`(${typeText}) \"${location}\" (booking OR appointment OR estimate) -directory -magazine ${exclusions}`);
   }
   return queries;
@@ -165,6 +165,36 @@ const structuredBusinessIdentity = (source) => {
 const pageTitleLooksLikeListicle = (title) => /\b(?:top|best)\s+\d+\b|\b\d+\s+(?:best|top)\b|\b(?:directory|list of|guide to)\b/i.test(title);
 const genericPageTitle = (title) => /^(?:request (?:a )?quote|contact(?: us)?|home|services?|welcome|our work|about us)$/i.test(title.trim());
 const publisherIdentity = (value) => /\b(?:directory|magazine|news|reviews?|listings?|best of|top \d+|find (?:a|the)|charleston(?:'s|s) finest)\b/i.test(value || "");
+const chainPatterns = [
+  [/\bfranchis(?:e|ed|es|ing|or|ors)\b/i, "Franchise language found"],
+  [/\b(?:find|search for) (?:a|your|the) (?:nearby )?location\b/i, "Corporate location finder found"],
+  [/\b(?:over|more than)\s+\d[\d,]*\s+(?:locations?|offices?|branches?)\b/i, "Large multi-location network found"],
+  [/\b(?:locations?|offices?)\s+(?:across|throughout)\s+(?:the )?(?:country|nation|united states|u\.?s\.?)\b/i, "National location network found"],
+  [/\b(?:serving customers )?(?:nationwide|across the nation)\b/i, "Nationwide service language found"],
+  [/\b(?:corporate|national) headquarters\b/i, "Corporate headquarters language found"],
+];
+
+const structuredChainSignals = (source) => {
+  const signals = [];
+  for (const script of source.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      for (const item of flattenJsonLd(JSON.parse(script[1]))) {
+        if (item.branchOf || item.parentOrganization) signals.push("Structured data identifies a parent organization or branch");
+      }
+    } catch {
+      // Invalid unrelated structured data is ignored.
+    }
+  }
+  return [...new Set(signals)];
+};
+
+export const independentBusinessCheck = (analysis) => {
+  const signals = analysis.chainSignals || [];
+  if (signals.length) return { matched: false, evidence: signals[0] };
+  if (analysis.locationDetails?.hasLocalAddress) return { matched: true, evidence: "Local business address found on its website" };
+  if (analysis.businessIdentitySource === "structured business data") return { matched: true, evidence: "Local-business identity found on its website" };
+  return { matched: true, evidence: "Business identity and local service-area references found on its website" };
+};
 
 const typeAliases = new Map([
   ["plumber", ["plumber", "plumbing"]],
@@ -223,6 +253,10 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " "));
   const locationDetails = structuredLocationDetails(source);
+  const chainSignals = [
+    ...chainPatterns.filter(([pattern]) => pattern.test(searchableText)).map(([, label]) => label),
+    ...structuredChainSignals(source),
+  ];
   const page = safePublicUrl(pageUrl);
   const hasViewport = /<meta[^>]+name=["']viewport["']/i.test(source);
   const hasForm = /<form\b/i.test(source);
@@ -300,6 +334,7 @@ export function analyzeBusinessPage(html = "", pageUrl = "") {
     publisherIdentity: publisherIdentity(`${identity?.name || ""} ${title}`),
     searchableText,
     locationDetails,
+    chainSignals: [...new Set(chainSignals)],
     primaryCity: locationDetails.cities[0] || null,
     fitReasons: [...new Set(fitReasons)].slice(0, 10),
     servicesInterest: [...new Set(servicesInterest)].slice(0, 6),
@@ -374,33 +409,49 @@ const searchBrave = async (query, count, env, fetchImpl) => {
   return Array.isArray(body?.web?.results) ? body.web.results : [];
 };
 
+const mapWithConcurrency = async (items, limit, mapper) => {
+  const output = new Array(items.length);
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      output[index] = await mapper(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return output;
+};
+
 export async function discoverBusinesses(input, env = {}) {
   const criteria = validateDiscoveryInput(input);
   const queries = buildDiscoveryQueries(criteria);
   const fetchImpl = env.__TEST_FETCH || fetch;
-  const perQuery = Math.min(20, Math.max(5, Math.ceil(criteria.maxResults / queries.length) + 3));
+  const inspectionLimit = Math.min(40, Math.max(criteria.maxResults * 3, criteria.maxResults + 8));
+  const perQuery = Math.min(20, Math.max(10, Math.ceil(inspectionLimit / queries.length) + 3));
   const resultGroups = await Promise.all(queries.map((query) => searchBrave(query, perQuery, env, fetchImpl)));
   const seen = new Set();
   const searchResults = resultGroups.flat().filter((result) => {
     const url = safePublicUrl(result?.url);
     if (!url || !isLikelyBusinessSite(url.href)) return false;
-    const key = `${normalizeDomain(url.href)}:${normalizeBusinessName(result.title)}`;
+    const key = normalizeDomain(url.href);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).slice(0, criteria.maxResults);
+  }).slice(0, inspectionLimit);
 
-  const candidates = (await Promise.all(searchResults.map(async (result) => {
+  const reviewed = await mapWithConcurrency(searchResults, 5, async (result) => {
     const inspected = await inspectedSite(result.url, fetchImpl);
     // Brave results are discovery pointers only. Persistable candidate fields below
     // come from the independently fetched business website, not the search result.
-    if (!inspected) return null;
+    if (!inspected) return { inspected: false, candidate: null };
     const analysis = inspected.analysis;
-    if (analysis.pageTitleLooksLikeListicle || analysis.publisherIdentity) return null;
-    if (analysis.genericPageTitle && !analysis.businessName) return null;
-    if (!pageMatchesBusinessTypes(analysis, criteria.businessTypes)) return null;
+    if (analysis.pageTitleLooksLikeListicle || analysis.publisherIdentity) return { inspected: true, candidate: null };
+    if (analysis.genericPageTitle && !analysis.businessName) return { inspected: true, candidate: null };
+    if (!pageMatchesBusinessTypes(analysis, criteria.businessTypes)) return { inspected: true, candidate: null };
     const locationMatch = pageMatchesLocation(analysis, criteria.location);
-    if (!locationMatch.matched) return null;
+    if (!locationMatch.matched) return { inspected: true, candidate: null };
+    const independentMatch = independentBusinessCheck(analysis);
+    if (!independentMatch.matched) return { inspected: true, candidate: null };
     const domain = normalizeDomain(inspected.url);
     const businessName = analysis.businessName
       || (analysis.genericPageTitle ? domain : cleanBusinessName(analysis.title || domain.split(".")[0]));
@@ -410,9 +461,9 @@ export async function discoverBusinesses(input, env = {}) {
       fitReasons.push("New-business launch signal was found; review its website and customer intake path");
       servicesInterest.push("website");
     }
-    if (!fitReasons.length) return null;
+    if (!fitReasons.length) return { inspected: true, candidate: null };
     const marine = analysis.marineContext || marinePattern.test(businessName);
-    return {
+    return { inspected: true, candidate: {
       id: crypto.randomUUID(),
       businessName,
       websiteUrl: new URL(inspected.url).origin,
@@ -430,19 +481,24 @@ export async function discoverBusinesses(input, env = {}) {
       publicEmail: analysis.publicEmail,
       publicContactFormUrl: analysis.publicContactFormUrl,
       locationEvidence: locationMatch.evidence,
+      independentBusinessEvidence: independentMatch.evidence,
       lastVerifiedDate: new Date().toISOString().slice(0, 10),
       tidalConflictReviewRequired: marine,
       tidalConflictReviewStatus: marine ? "pending" : "not_needed",
       checks: analysis.checks,
-    };
-  }))).filter((candidate) => candidate?.businessName && candidate.normalizedDomain);
+    } };
+  });
+  const inspectedCount = reviewed.filter((item) => item?.inspected).length;
+  const candidates = reviewed.map((item) => item?.candidate)
+    .filter((candidate) => candidate?.businessName && candidate.normalizedDomain)
+    .slice(0, criteria.maxResults);
 
   return {
     provider: "Brave Search API",
     criteria,
     queries,
     candidates,
-    coverage: `Used ${searchResults.length} search match${searchResults.length === 1 ? "" : "es"} transiently and independently checked ${candidates.length} public business website${candidates.length === 1 ? "" : "s"}. Results are bounded and are not an exhaustive market list.`,
+    coverage: `Used ${searchResults.length} search match${searchResults.length === 1 ? "" : "es"} transiently, checked ${inspectedCount} public website${inspectedCount === 1 ? "" : "s"}, and returned ${candidates.length} qualified local business${candidates.length === 1 ? "" : "es"}. Results are bounded and are not an exhaustive market list.`,
   };
 }
 

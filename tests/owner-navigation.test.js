@@ -47,6 +47,9 @@ test("owner record pages remain private and use the protected API", async () => 
   assert.match(leads, /lead\.websiteUrl \|\| lead\.publicContactFormUrl/);
   assert.match(leadsHtml, /id="open-email-app"[^>]+disabled/);
   assert.doesNotMatch(leads, /sendEmail|emailjs|\/api\/send/);
+  assert.match(leadsHtml, /Find Charleston service businesses/);
+  assert.match(leadsHtml, /Find South Carolina service businesses/);
+  assert.match(leadsHtml, /data-discovery-types="plumber, electrician, appliance repair, handyman, tree service, landscaping, towing, contractor"/);
   assert.match(leadsHtml, /Find plumbers in this area/);
   assert.match(leadsHtml, /Find marine services in this area/);
   assert.match(leadsHtml, /Find auto services in this area/);
