@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeBusinessName, normalizeDomain, serializeLead, syncLeadFromIntake, validateLeadInput } from "../functions/_lib/leads.js";
+import { analyzeBusinessPage, buildDiscoveryQueries, discoverBusinesses, independentBusinessCheck, pageMatchesBusinessTypes, pageMatchesLocation, publicActivitySignal, safePublicUrl, validateDiscoveryInput } from "../functions/_lib/discovery.js";
 import { requireOwner } from "../functions/_lib/security.js";
 import { readFile } from "node:fs/promises";
 import { __test as leadApi, onRequestGet as getLeads, onRequestPost as postLead, onRequestPut as putLead } from "../functions/api/leads.js";
+import { onRequestPost as runDiscovery } from "../functions/owner/api/discovery.js";
 
 const leadRow = (overrides = {}) => ({
   id: "11111111-1111-4111-8111-111111111111",
@@ -60,6 +62,235 @@ const ownerEnv = (sql) => ({
 test("lead normalization supports obvious duplicate detection", () => {
   assert.equal(normalizeBusinessName("Harbor & Home, LLC"), "harbor and home llc");
   assert.equal(normalizeDomain("https://www.Example.com/about"), "example.com");
+});
+
+test("lead discovery accepts cities, ZIP codes, regions, and telephone area codes", () => {
+  for (const location of ["Charleston, SC", "29577", "Grand Strand", "843 area code"]) {
+    const input = validateDiscoveryInput({ location, focus: "both", maxResults: 10, businessTypes: ["contractor"] });
+    assert.equal(input.location, location);
+    assert.equal(buildDiscoveryQueries(input).every((query) => query.includes(location)), true);
+  }
+  assert.throws(() => validateDiscoveryInput({ location: "", maxResults: 10 }), /Search area is required/);
+  assert.throws(() => validateDiscoveryInput({ location: "Charleston", maxResults: 100 }), /Result limit is invalid/);
+});
+
+test("lead discovery creates targeted service-and-location query lanes", () => {
+  const queries = buildDiscoveryQueries(validateDiscoveryInput({
+    location: "Charleston, SC",
+    focus: "website_opportunity",
+    maxResults: 10,
+    businessTypes: ["plumber", "tree service", "handyman", "appliance repair"],
+  }));
+  assert.equal(queries.length, 2);
+  assert.match(queries[0], /"plumber" OR "tree service"/);
+  assert.match(queries[1], /"handyman" OR "appliance repair"/);
+  assert.ok(queries.every((query) => query.includes('"Charleston, SC"')));
+  assert.ok(queries.every((query) => query.includes("-franchise")));
+});
+
+test("new-prospect discovery does not depend only on grand-opening language", () => {
+  const queries = buildDiscoveryQueries(validateDiscoveryInput({
+    location: "Charleston, SC",
+    focus: "new_business",
+    maxResults: 10,
+    businessTypes: ["electrician", "tree service"],
+  }));
+  assert.equal(queries.length, 1);
+  assert.match(queries[0], /"locally owned"/);
+  assert.match(queries[0], /services/);
+
+  const localTrades = analyzeBusinessPage(`<!doctype html><html><head><title>Local Trades</title></head><body><p>Charleston electrical work, tree care, and lawn care.</p></body></html>`, "https://local-trades.example/");
+  assert.equal(pageMatchesBusinessTypes(localTrades, ["electrician"]), true);
+  assert.equal(pageMatchesBusinessTypes(localTrades, ["tree service"]), true);
+  assert.equal(pageMatchesBusinessTypes(localTrades, ["landscaping"]), true);
+});
+
+test("lead discovery blocks unsafe crawl targets", () => {
+  assert.equal(safePublicUrl("http://127.0.0.1/admin"), null);
+  assert.equal(safePublicUrl("http://192.168.1.10/"), null);
+  assert.equal(safePublicUrl("https://user:secret@example.com/"), null);
+  assert.equal(safePublicUrl("https://example.com/contact")?.hostname, "example.com");
+});
+
+test("website review reports visible evidence without unexplained scoring", () => {
+  const analysis = analyzeBusinessPage(`<!doctype html><html><head><title>Harbor Home Services | Charleston</title></head><body><a href="tel:+18435550199">Call</a><p>Request an estimate and pay your invoice.</p></body></html>`, "https://harbor.example/");
+  assert.equal(analysis.title, "Harbor Home Services | Charleston");
+  assert.equal(analysis.publicPhone, "+18435550199");
+  assert.ok(analysis.fitReasons.includes("Website appears to rely on phone contact"));
+  assert.ok(analysis.fitReasons.includes("No online booking link found"));
+  assert.ok(analysis.fitReasons.includes("Payment information appears separate from an online payment flow"));
+  assert.equal(analysis.checks.hasForm, false);
+});
+
+test("website review identifies generic intake, placeholders, old footers, and workflow paths", () => {
+  const analysis = analyzeBusinessPage(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>Local Repair</title></head><body><p>Charleston appliance repair. Your company name website coming soon.</p><form><input name="name"><input name="email"></form><a href="/portal">Customer portal: track your job</a><footer>Copyright 2018</footer></body></html>`, "https://local-repair.example/");
+  assert.ok(analysis.fitReasons.includes("Public form appears to collect only general contact details"));
+  assert.ok(analysis.fitReasons.includes("Placeholder or unfinished website copy was found"));
+  assert.ok(analysis.fitReasons.some((reason) => reason.includes("Footer year appears to be 2018")));
+  assert.equal(analysis.checks.hasStructuredIntake, false);
+  assert.equal(analysis.checks.hasFileUpload, false);
+  assert.equal(analysis.checks.hasStatusOrPortal, true);
+});
+
+test("public activity signals remain transparent and require verification", () => {
+  const strong = analyzeBusinessPage(`<!doctype html><html><head><title>Harbor Repair</title><script type="application/ld+json">{"@type":"LocalBusiness","name":"Harbor Repair","address":{"addressLocality":"Charleston","addressRegion":"SC"}}</script></head><body><p>Charleston repair service</p><a href="tel:+18435550100">Call</a></body></html>`, "https://harbor-repair.example/");
+  assert.equal(publicActivitySignal(strong).level, "strong");
+  assert.match(publicActivitySignal(strong).evidence, /public contact path/);
+
+  const older = analyzeBusinessPage(`<!doctype html><html><head><title>Older Repair</title><script type="application/ld+json">{"@type":"LocalBusiness","name":"Older Repair","address":{"addressLocality":"Charleston","addressRegion":"SC"}}</script></head><body><p>Charleston repair service</p><a href="tel:+18435550101">Call</a><footer>Copyright 2018</footer></body></html>`, "https://older-repair.example/");
+  assert.equal(publicActivitySignal(older).level, "moderate");
+
+  const uncertain = analyzeBusinessPage(`<!doctype html><html><head><title>Quiet Service</title></head><body><p>Charleston tree service</p></body></html>`, "https://quiet.example/");
+  assert.equal(publicActivitySignal(uncertain).level, "verify_first");
+});
+
+test("website review prefers a structured business name over a generic page title", () => {
+  const analysis = analyzeBusinessPage(`<!doctype html><html><head><title>Request A Quote</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"ProfessionalService","name":"Green Home Solutions"}</script></head><body><form></form></body></html>`, "https://greenhomesolutions.example/");
+  assert.equal(analysis.businessName, "Green Home Solutions");
+  assert.equal(analysis.businessIdentitySource, "structured business data");
+  assert.equal(analysis.genericPageTitle, true);
+});
+
+test("website review identifies evidence-based modernization opportunities", () => {
+  const analysis = analyzeBusinessPage(`
+    <html><head><title>Legacy Service Company</title></head>
+    <frameset><frame src="http://legacy.example/home.html"></frameset>
+    <body style="width: 960px"><center><font>Call today</font></center></body></html>
+  `, "http://legacy.example/");
+  assert.ok(analysis.fitReasons.includes("Mobile viewport setup was not found"));
+  assert.ok(analysis.fitReasons.includes("Website is still served over HTTP"));
+  assert.ok(analysis.fitReasons.includes("Legacy page technology was detected"));
+  assert.ok(analysis.fitReasons.includes("Fixed-width page structure may limit smaller-screen usability"));
+  assert.equal(analysis.checks.usesHttps, false);
+  assert.equal(analysis.checks.hasModernMarkup, false);
+  assert.equal(analysis.checks.hasFlexibleLayout, false);
+
+  const mixedContent = analyzeBusinessPage(`<html><head><meta name="viewport" content="width=device-width"></head><body><img src="http://assets.example/logo.png"></body></html>`, "https://secure.example/");
+  assert.ok(mixedContent.fitReasons.includes("Secure page includes insecure asset links"));
+  assert.equal(mixedContent.checks.hasSecureAssets, false);
+});
+
+test("modern responsive styles do not trigger fixed-width modernization evidence", () => {
+  const analysis = analyzeBusinessPage(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><style>.page{max-width:1200px}</style><title>Modern Service Company</title></head><body><main><form></form><a href="/contact">Contact</a></main></body></html>`, "https://modern.example/");
+  assert.equal(analysis.checks.usesHttps, true);
+  assert.equal(analysis.checks.hasSecureAssets, true);
+  assert.equal(analysis.checks.hasModernMarkup, true);
+  assert.equal(analysis.checks.hasFlexibleLayout, true);
+  assert.equal(analysis.fitReasons.includes("Fixed-width page structure may limit smaller-screen usability"), false);
+});
+
+test("discovery verifies requested trade and local service-area evidence", () => {
+  const localPlumber = analyzeBusinessPage(`<!doctype html><html><head><title>Harbor Plumbing</title><script type="application/ld+json">{"@context":"https://schema.org","@type":["LocalBusiness","Plumber"],"name":"Harbor Plumbing","address":{"@type":"PostalAddress","addressLocality":"Charleston","addressRegion":"SC","postalCode":"29401"}}</script></head><body><h1>Charleston plumbing and drain repair</h1><a href="tel:+18435550199">Call</a></body></html>`, "https://harbor-plumbing.example/");
+  assert.equal(pageMatchesBusinessTypes(localPlumber, ["plumber", "plumbing contractor"]), true);
+  assert.equal(pageMatchesLocation(localPlumber, "Charleston, SC").matched, true);
+  assert.equal(pageMatchesLocation(localPlumber, "843 area code").matched, true);
+  assert.equal(pageMatchesLocation(localPlumber, "29401").matched, true);
+
+  const webOnly = analyzeBusinessPage(`<!doctype html><html><head><title>Online Business Services</title></head><body><p>Nationwide virtual services for online companies.</p></body></html>`, "https://online.example/");
+  assert.equal(pageMatchesBusinessTypes(webOnly, ["plumber"]), false);
+  assert.equal(pageMatchesLocation(webOnly, "Charleston, SC").matched, false);
+});
+
+test("discovery rejects franchises and national chains while preserving local operators", () => {
+  const franchise = analyzeBusinessPage(`<!doctype html><html><head><title>National Plumbing - Charleston</title><script type="application/ld+json">{"@type":"Plumber","name":"National Plumbing Charleston","address":{"addressLocality":"Charleston","addressRegion":"SC"},"parentOrganization":{"name":"National Plumbing Group"}}</script></head><body><p>Our Charleston franchise is part of a nationwide network. Find a location.</p></body></html>`, "https://national.example/locations/charleston");
+  assert.equal(pageMatchesLocation(franchise, "Charleston, SC").matched, true);
+  assert.equal(independentBusinessCheck(franchise).matched, false);
+  assert.ok(franchise.chainSignals.length >= 1);
+
+  const local = analyzeBusinessPage(`<!doctype html><html><head><title>Harbor Plumbing</title><script type="application/ld+json">{"@type":"LocalBusiness","name":"Harbor Plumbing","address":{"addressLocality":"Charleston","addressRegion":"SC"}}</script></head><body><p>Family owned Charleston plumbing service.</p></body></html>`, "https://harbor.example/");
+  assert.equal(independentBusinessCheck(local).matched, true);
+  assert.match(independentBusinessCheck(local).evidence, /Local business address/);
+});
+
+test("owner-triggered discovery searches public results and returns reviewable candidates", async () => {
+  const searched = [];
+  const result = await discoverBusinesses({ location: "843 area code", businessTypes: ["home services"], focus: "both", maxResults: 5 }, {
+    __TEST_SEARCH: async (query) => {
+      searched.push(query);
+      return [{ title: "Harbor Home Services | Charleston", url: "https://harbor.example/", description: "Now open home services company in the 843 area code." }];
+    },
+    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><title>Harbor Home Services | Charleston</title></head><body><p>Now open in Charleston.</p><a href="tel:+18435550199">Call us</a></body></html>`, { headers: { "content-type": "text/html" } }),
+  });
+  assert.equal(searched.length, 2);
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].businessName, "Harbor Home Services");
+  assert.equal(result.candidates[0].city, "843 area code");
+  assert.ok(result.candidates[0].launchSignals.includes("Now open announcement"));
+  assert.ok(result.candidates[0].fitReasons.includes("Website appears to rely on phone contact"));
+  assert.equal(result.candidates[0].activitySignal, "moderate");
+  assert.deepEqual(result.candidates[0].sourceUrls, ["https://harbor.example/"]);
+  assert.equal("sourceSnippet" in result.candidates[0], false);
+  assert.match(result.coverage, /not an exhaustive market list/);
+});
+
+test("lead discovery does not persist search-result content or unverified websites", async () => {
+  const result = await discoverBusinesses({ location: "Charleston", focus: "new_business", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [{ title: "Search Result Name", url: "https://unreachable.example/", description: "Grand opening search snippet" }],
+    __TEST_FETCH: async () => new Response("Unavailable", { status: 503, headers: { "content-type": "text/plain" } }),
+  });
+  assert.deepEqual(result.candidates, []);
+});
+
+test("website-opportunity discovery omits verified sites with no observed need", async () => {
+  const result = await discoverBusinesses({ location: "South Carolina", focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [{ title: "Modern Service Company", url: "https://modern.example/" }],
+    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><meta name="viewport" content="width=device-width"><title>Modern Service Company</title></head><body><form></form><a href="/contact">Contact</a><a href="/book">Book</a></body></html>`, { headers: { "content-type": "text/html" } }),
+  });
+  assert.deepEqual(result.candidates, []);
+});
+
+test("website-opportunity discovery omits publisher listicles without a local-business identity", async () => {
+  const result = await discoverBusinesses({ location: "Charleston, SC", focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [{ title: "The 10 Best General Contractors in Charleston", url: "https://publisher.example/contractors" }],
+    __TEST_FETCH: async () => new Response(`<!doctype html><html><head><title>The 10 Best General Contractors in Charleston</title></head><body><a href="tel:+18435550199">Call</a></body></html>`, { headers: { "content-type": "text/html" } }),
+  });
+  assert.deepEqual(result.candidates, []);
+});
+
+test("website-opportunity discovery rejects directories, generic quote pages, and nonlocal trade matches", async () => {
+  const pages = new Map([
+    ["https://publisher.example/list", `<!doctype html><html><head><title>The 10 Best Plumbers in Charleston</title><script type="application/ld+json">{"@type":"Organization","name":"Contractor Directory"}</script></head><body><p>Charleston plumber listings</p></body></html>`],
+    ["https://quote.example/", `<!doctype html><html><head><title>Request A Quote</title></head><body><p>Charleston plumbing quote form</p><a href="tel:+18435550199">Call</a></body></html>`],
+    ["https://remote.example/", `<!doctype html><html><head><title>Remote Plumbing Software</title></head><body><p>Online software for plumbing companies nationwide.</p></body></html>`],
+  ]);
+  const result = await discoverBusinesses({ location: "Charleston, SC", businessTypes: ["plumber"], focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => [...pages.keys()].map((url) => ({ title: url, url })),
+    __TEST_FETCH: async (url) => new Response(pages.get(url), { headers: { "content-type": "text/html" } }),
+  });
+  assert.deepEqual(result.candidates, []);
+});
+
+test("discovery oversamples past chain results to find qualified local businesses", async () => {
+  const urls = Array.from({ length: 6 }, (_, index) => `https://candidate-${index}.example/`);
+  const result = await discoverBusinesses({ location: "Charleston, SC", businessTypes: ["plumber"], focus: "website_opportunity", maxResults: 5 }, {
+    __TEST_SEARCH: async () => urls.map((url) => ({ title: url, url })),
+    __TEST_FETCH: async (url) => {
+      const index = Number(url.match(/candidate-(\d+)/)?.[1]);
+      const html = index < 5
+        ? `<!doctype html><html><head><title>National Plumbing ${index}</title></head><body><p>Charleston plumbing franchise serving customers nationwide. Find a location.</p></body></html>`
+        : `<!doctype html><html><head><title>Harbor Pipeworks</title><script type="application/ld+json">{"@type":"LocalBusiness","name":"Harbor Pipeworks","address":{"addressLocality":"Charleston","addressRegion":"SC"}}</script></head><body><p>Family owned Charleston plumbing.</p><a href="tel:+18435550123">Call</a></body></html>`;
+      return new Response(html, { headers: { "content-type": "text/html" } });
+    },
+  });
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].businessName, "Harbor Pipeworks");
+  assert.match(result.candidates[0].independentBusinessEvidence, /Local business address/);
+  assert.match(result.coverage, /returned 1 qualified local business/);
+});
+
+test("discovery API is owner-only and requires configured search data", async () => {
+  const unauthorized = await runDiscovery({
+    request: new Request("https://example.test/owner/api/discovery", { method: "POST", headers: { origin: "https://example.test", "content-type": "application/json" }, body: JSON.stringify({ location: "Charleston", maxResults: 5 }) }),
+    env: { ENVIRONMENT: "production", PUBLIC_SITE_URL: "https://example.test" },
+  });
+  assert.equal(unauthorized.status, 503);
+
+  const unconfigured = await runDiscovery({
+    request: new Request("https://example.test/owner/api/discovery", { method: "POST", headers: { origin: "https://example.test", "content-type": "application/json" }, body: JSON.stringify({ location: "Charleston", maxResults: 5 }) }),
+    env: ownerEnv(async () => []),
+  });
+  assert.equal(unconfigured.status, 503);
+  assert.match((await unconfigured.json()).error, /BRAVE_SEARCH_API_KEY/);
 });
 
 test("lead input rejects invalid stage and unsafe website URL", () => {
@@ -150,19 +381,25 @@ test("owner workspace is excluded from discovery and marked private", async () =
 });
 
 test("owner workspace keeps its browser API inside the Access-protected route", async () => {
-  const [client, protectedRoute, html] = await Promise.all([
+  const [client, protectedRoute, discoveryRoute, html] = await Promise.all([
     readFile(new URL("../owner/leads/leads.js", import.meta.url), "utf8"),
     readFile(new URL("../functions/owner/api/leads.js", import.meta.url), "utf8"),
+    readFile(new URL("../functions/owner/api/discovery.js", import.meta.url), "utf8"),
     readFile(new URL("../owner/leads/index.html", import.meta.url), "utf8"),
   ]);
   assert.match(client, /const LEADS_API = "\/owner\/api\/leads"/);
+  assert.match(client, /const DISCOVERY_API = "\/owner\/api\/discovery"/);
   assert.doesNotMatch(client, /api\([`"]\/api\/leads/);
   assert.match(client, /setField\(form, "id", lead\?\.id \|\| ""\)/);
   assert.match(protectedRoute, /from "\.\.\/\.\.\/api\/leads\.js"/);
+  assert.match(discoveryRoute, /requireOwner/);
+  assert.match(discoveryRoute, /discoverBusinesses/);
   assert.match(html, /id="cancel-lead" type="button"/);
   assert.match(html, /id="close-lead" type="button"/);
   assert.match(html, /name="tidalConflictReviewStatus"/);
   assert.match(html, /name="archived"/);
+  assert.match(html, /id="discovery-form"/);
+  assert.match(html, /Search Public Web/);
 });
 
 test("lead list views, filters, and date sorting are deterministic", () => {
@@ -175,6 +412,14 @@ test("lead list views, filters, and date sorting are deterministic", () => {
   assert.deepEqual(leadApi.applyView(leads, "all", new URLSearchParams("archived=only")).map((lead) => lead.id), ["c"]);
   assert.equal(leadApi.rowMatch(leads[0], new URLSearchParams("conflict=pending&services=work")), true);
   assert.deepEqual(leadApi.sortLeads(leads.slice(0, 2), "due").map((lead) => lead.id), ["b", "a"]);
+});
+
+test("New Business Radar supports owner-selected locations instead of a hard-coded territory", () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const leads = [
+    { id: "outside-original-area", businessName: "Area Search Demo", city: "Savannah", serviceArea: "912 area code", archived: false, stage: "new", fitLevel: "medium", contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", discoveredDate: today, servicesInterest: [] },
+  ];
+  assert.deepEqual(leadApi.applyView(leads, "radar", new URLSearchParams()).map((lead) => lead.id), ["outside-original-area"]);
 });
 
 test("lead API returns private queue counts and pipeline totals", async () => {
@@ -232,6 +477,35 @@ test("lead API records explicit stage and do-not-contact changes", async () => {
   assert.equal(response.status, 200);
   assert.equal((await response.json()).lead.stage, "qualified");
   assert.ok(calls.some((call) => call.query.includes("lead_activities") && call.values.includes("Stage changed to qualified.")));
+});
+
+test("next actions can be completed and reopened without duplicate-review blocking", async () => {
+  for (const [action, starting, expected, note] of [
+    ["complete", false, true, "Next action completed."],
+    ["reopen", true, false, "Next action reopened."],
+  ]) {
+    const calls = [];
+    const sql = async (strings, ...values) => {
+      const query = strings.join("?");
+      calls.push({ query, values });
+      if (query.includes("select * from leads where id")) return [leadRow({ next_action_completed: starting })];
+      if (query.includes("select id, business_name")) return [{ id: "duplicate-that-must-not-block" }];
+      if (query.includes("update leads set")) return [leadRow({ next_action_completed: expected })];
+      return [];
+    };
+    const response = await putLead({
+      request: new Request("https://example.test/owner/api/leads", {
+        method: "PUT",
+        headers: { origin: "https://example.test", "content-type": "application/json" },
+        body: JSON.stringify({ id: leadRow().id, action }),
+      }),
+      env: ownerEnv(sql),
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).lead.nextActionCompleted, expected);
+    assert.equal(calls.some((call) => call.query.includes("select id, business_name")), false);
+    assert.ok(calls.some((call) => call.query.includes("lead_activities") && call.values.includes(note)));
+  }
 });
 
 test("duplicate-review migration keeps lookup performance without blocking reviewed records", async () => {

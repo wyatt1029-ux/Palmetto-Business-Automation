@@ -1,13 +1,27 @@
 (() => {
   const LEADS_API = "/owner/api/leads";
+  const DISCOVERY_API = "/owner/api/discovery";
   const LIST_FIELDS = ["sourceUrls", "publicSocialLinks", "fitReasons", "servicesInterest", "launchSignals"];
   const BOOLEAN_FIELDS = ["nextActionCompleted", "tidalConflictReviewRequired", "doNotContact", "archived"];
   const pipelineStages = ["new", "contacted", "discovery_scheduled", "qualified", "scope_sent", "approved", "paid_active"];
-  const state = { view: "queue", leads: [], selected: null, pipelineCounts: {} };
+  const state = {
+    view: "queue",
+    leads: [],
+    selected: null,
+    pipelineCounts: {},
+    discoveryCandidates: [],
+    pendingLeadId: new URLSearchParams(location.search).get("lead"),
+    emailDraftLeadId: null,
+    emailDraftLogged: false,
+    emailDraftSourceUrl: null,
+  };
   const demoLeads = [
-    { id: "demo-1", businessName: "Lowcountry HVAC Demo", city: "Charleston", serviceArea: "Charleston", industry: "Home services", source: "new_business_radar", stage: "new", fitLevel: "high", fitReasons: ["No clear service-request form"], nextAction: "Review contact path", nextActionDue: "2026-08-28", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["New LLC filing"], dateConfidence: "confirmed", discoveredDate: "2026-08-20", lastVerifiedDate: "2026-08-25", createdAt: "2026-08-20", servicesInterest: ["landing page"], sourceUrls: [], publicSocialLinks: [] },
+    { id: "demo-1", businessName: "Lowcountry HVAC Demo", city: "Charleston", serviceArea: "Charleston", industry: "Home services", source: "new_business_radar", stage: "new", fitLevel: "high", fitReasons: ["No clear service-request form"], nextAction: "Review contact path", nextActionDue: "2026-08-28", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["New LLC filing"], dateConfidence: "confirmed", discoveredDate: "2026-08-20", lastVerifiedDate: "2026-08-25", createdAt: "2026-08-20", websiteUrl: "https://lowcountry-hvac.example/", servicesInterest: ["landing page"], sourceUrls: [], publicSocialLinks: [] },
     { id: "demo-2", businessName: "Harbor Route Marine Demo", city: "Mount Pleasant", serviceArea: "Charleston", industry: "Marine service", source: "researched", stage: "contacted", fitLevel: "medium", fitReasons: ["Website has phone only; no lead workflow"], nextAction: "Complete conflict review", nextActionDue: "2026-08-27", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "not_contacted", tidalConflictReviewRequired: true, tidalConflictReviewStatus: "pending", archived: false, launchSignals: ["New website"], dateConfidence: "unknown", discoveredDate: "2026-08-18", lastVerifiedDate: "2026-08-24", createdAt: "2026-08-18", servicesInterest: ["workflow"], sourceUrls: [], publicSocialLinks: [] },
     { id: "demo-3", businessName: "Palmetto Bookkeeping Demo", city: "Myrtle Beach", serviceArea: "Grand Strand", industry: "Professional services", source: "website_inquiry", stage: "discovery_scheduled", fitLevel: "high", fitReasons: ["Payment or intake workflow may be fragmented"], nextAction: "Prepare discovery notes", nextActionDue: "2026-09-02", nextActionOwner: "Owner", nextActionCompleted: false, contactStatus: "replied", tidalConflictReviewStatus: "not_needed", archived: false, launchSignals: ["Now open social post"], dateConfidence: "estimated", discoveredDate: "2026-08-15", lastVerifiedDate: "2026-08-23", createdAt: "2026-08-15", servicesInterest: ["website", "workflow"], sourceUrls: [], publicSocialLinks: [] },
+  ];
+  const demoDiscoveryCandidates = [
+    { id: "discovery-demo-1", businessName: "Lowcountry Service Company Demo", websiteUrl: "https://example.com", normalizedDomain: "example.com", city: "843 area code", serviceArea: "843 area code", industry: "Home services", sourceUrls: ["https://example.com"], fitLevel: "high", fitReasons: ["Website appears to rely on phone contact", "No online booking link found", "Mobile viewport setup was not found"], servicesInterest: ["website", "lead workflow"], launchSignals: ["Now open announcement"], dateConfidence: "unknown", publicPhone: null, publicEmail: null, publicContactFormUrl: null, lastVerifiedDate: "2026-08-27", tidalConflictReviewRequired: false, tidalConflictReviewStatus: "not_needed", checks: { hasViewport: false, hasForm: false, hasPhone: true, hasBooking: false, usesHttps: true, hasSecureAssets: true, hasModernMarkup: true, hasFlexibleLayout: true } },
   ];
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -48,6 +62,148 @@
     element.textContent = message;
     element.hidden = !message;
   };
+
+  const showDiscoveryError = (message = "") => {
+    const element = $("#discovery-error");
+    element.textContent = message;
+    element.hidden = !message;
+  };
+
+  const discoveryChecks = (checks = {}) => [
+    ["Responsive viewport", checks.hasViewport],
+    ["HTTPS", checks.usesHttps],
+    ["Secure page assets", checks.hasSecureAssets],
+    ["Modern page structure", checks.hasModernMarkup],
+    ["Flexible layout", checks.hasFlexibleLayout],
+    ["Request form", checks.hasForm],
+    ["Service-specific intake", checks.hasStructuredIntake],
+    ["Photo upload", checks.hasFileUpload],
+    ["Phone link", checks.hasPhone],
+    ["Contact path", checks.hasContactLink],
+    ["Online booking", checks.hasBooking],
+    ["Payment link", checks.hasPayment],
+    ["Customer portal or status path", checks.hasStatusOrPortal],
+  ].map(([label, found]) => `<span class="check-result ${found ? "check-found" : "check-missing"}">${found ? "Found" : "Not found"}: ${escapeHtml(label)}</span>`).join("");
+
+  function renderDiscoveryResults(meta = {}) {
+    const container = $("#discovery-results");
+    const candidates = state.discoveryCandidates;
+    if (!candidates.length) {
+      container.innerHTML = meta.searched ? '<div class="discovery-empty">No reviewable business websites were found in this bounded search. Try a broader area or different business types.</div>' : "";
+      return;
+    }
+    container.innerHTML = candidates.map((candidate) => `
+      <article class="discovery-card" data-candidate-id="${escapeHtml(candidate.id)}">
+        <div class="discovery-card-heading"><div><span class="pill">${escapeHtml(stageLabel(candidate.fitLevel))} fit</span><span class="pill ${candidate.activitySignal === "verify_first" ? "pill-amber" : ""}">${escapeHtml(stageLabel(candidate.activitySignal || "verify_first"))} activity signal</span>${candidate.tidalConflictReviewRequired ? '<span class="pill pill-amber">Tidal review required</span>' : ""}<h3>${escapeHtml(candidate.businessName)}</h3><p>${escapeHtml(candidate.normalizedDomain || candidate.city || "Public web result")}</p></div><button class="button button-primary" type="button" data-add-candidate="${escapeHtml(candidate.id)}">Add to Radar</button></div>
+        <p>Checked directly from this business website on ${escapeHtml(formatDate(candidate.lastVerifiedDate))}. Search-provider results are temporary and are not saved to the CRM.</p>
+        ${candidate.locationEvidence ? `<p><strong>Local match:</strong> ${escapeHtml(candidate.locationEvidence)}</p>` : ""}
+        ${candidate.independentBusinessEvidence ? `<p><strong>Independent-business check:</strong> ${escapeHtml(candidate.independentBusinessEvidence)}</p>` : ""}
+        <p><strong>Public activity signal:</strong> ${escapeHtml(candidate.activitySignalEvidence || "Verify current activity before outreach")}. This is a public-web estimate, not proof that the business is operating.</p>
+        <div class="candidate-links"><a href="${escapeHtml(candidate.websiteUrl)}" target="_blank" rel="noreferrer">Open website</a>${(candidate.sourceUrls || []).map((url) => `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">Open source</a>`).join("")}</div>
+        <h4>Observed opportunities</h4><ul>${(candidate.fitReasons || []).map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
+        ${candidate.launchSignals?.length ? `<p><strong>Launch signals:</strong> ${escapeHtml(candidate.launchSignals.join(", "))}</p>` : '<p class="muted"><strong>Launch date:</strong> Unknown; verify before treating this as a newly opened business.</p>'}
+        <div class="candidate-checks" aria-label="Automated website checks">${discoveryChecks(candidate.checks)}</div>
+        <p class="candidate-message" aria-live="polite"></p>
+      </article>`).join("");
+    $$('[data-add-candidate]', container).forEach((button) => button.addEventListener("click", () => addCandidateToRadar(button.dataset.addCandidate)));
+  }
+
+  const candidatePayload = (candidate) => {
+    const due = new Date();
+    due.setDate(due.getDate() + 2);
+    return {
+      businessName: candidate.businessName,
+      websiteUrl: candidate.websiteUrl,
+      city: candidate.city || "",
+      serviceArea: candidate.serviceArea || "",
+      industry: candidate.industry || "",
+      source: "new_business_radar",
+      sourceUrls: candidate.sourceUrls || [],
+      publicPhone: candidate.publicPhone || "",
+      publicEmail: candidate.publicEmail || "",
+      publicContactFormUrl: candidate.publicContactFormUrl || "",
+      publicSocialLinks: [],
+      stage: "new",
+      fitLevel: candidate.fitLevel || "medium",
+      fitReasons: candidate.fitReasons || [],
+      servicesInterest: candidate.servicesInterest || [],
+      formationDate: "",
+      openedDate: "",
+      dateConfidence: "unknown",
+      discoveredDate: new Date().toISOString().slice(0, 10),
+      launchSignals: candidate.launchSignals || [],
+      nextAction: candidate.tidalConflictReviewRequired ? "Complete Tidal conflict review" : candidate.activitySignal === "verify_first" ? "Verify business activity and confirm fit" : "Review public sources and confirm fit",
+      nextActionDue: due.toISOString().slice(0, 10),
+      nextActionOwner: "Owner",
+      nextActionCompleted: false,
+      lastVerifiedDate: candidate.lastVerifiedDate || new Date().toISOString().slice(0, 10),
+      contactStatus: "not_contacted",
+      doNotContact: false,
+      doNotContactReason: "",
+      internalNotes: `Discovered through an owner-triggered search. Saved details were independently checked against the business's public website.${candidate.locationEvidence ? ` Local match: ${candidate.locationEvidence}.` : ""}${candidate.independentBusinessEvidence ? ` Independent-business check: ${candidate.independentBusinessEvidence}.` : ""}${candidate.activitySignalEvidence ? ` Public activity signal (${stageLabel(candidate.activitySignal)}): ${candidate.activitySignalEvidence}.` : ""} Verify the website, recent public activity, phone number, and business status before outreach.`,
+      archived: false,
+      tidalConflictReviewRequired: Boolean(candidate.tidalConflictReviewRequired),
+      tidalConflictReviewStatus: candidate.tidalConflictReviewRequired ? "pending" : "not_needed",
+      tidalConflictNotes: candidate.tidalConflictReviewRequired ? "Public search matched a marine-related term. Owner review required before outreach." : "",
+    };
+  };
+
+  async function addCandidateToRadar(id) {
+    const candidate = state.discoveryCandidates.find((item) => item.id === id);
+    if (!candidate) return;
+    const card = $(`[data-candidate-id="${CSS.escape(id)}"]`);
+    const button = $("[data-add-candidate]", card);
+    const message = $(".candidate-message", card);
+    button.disabled = true;
+    message.textContent = "Adding to the private workspace…";
+    try {
+      if (!isDemo()) await api(LEADS_API, { method: "POST", body: JSON.stringify(candidatePayload(candidate)) });
+      button.textContent = "Added";
+      message.textContent = candidate.tidalConflictReviewRequired
+        ? "Added with a pending Tidal conflict review. It is not ready for outreach."
+        : "Added to New Business Radar with a next review action.";
+      await load();
+    } catch (error) {
+      button.disabled = false;
+      message.textContent = error.status === 409 ? "A possible duplicate already exists. Review All Leads before adding another record." : error.message;
+    }
+  }
+
+  async function runDiscovery(event) {
+    event.preventDefault();
+    const button = $("#run-discovery");
+    const status = $("#discovery-status");
+    const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+    payload.businessTypes = String(payload.businessTypes || "").split(",").map((item) => item.trim()).filter(Boolean);
+    payload.maxResults = Number(payload.maxResults);
+    button.disabled = true;
+    showDiscoveryError();
+    status.textContent = "Searching public sources and checking business websites. This can take a few moments…";
+    $("#discovery-results").innerHTML = "";
+    try {
+      const body = isDemo()
+        ? { provider: "Sanitized local demo", candidates: demoDiscoveryCandidates, coverage: "One sanitized demonstration result." }
+        : await api(DISCOVERY_API, { method: "POST", body: JSON.stringify(payload) });
+      state.discoveryCandidates = body.candidates || [];
+      status.textContent = `${state.discoveryCandidates.length} candidate${state.discoveryCandidates.length === 1 ? "" : "s"} ready for review. ${body.coverage || ""}`;
+      renderDiscoveryResults({ searched: true });
+    } catch (error) {
+      state.discoveryCandidates = [];
+      status.textContent = "";
+      showDiscoveryError(error.message);
+      renderDiscoveryResults({ searched: true });
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function runQuickDiscovery(button) {
+    const form = $("#discovery-form");
+    form.elements.location.value = button.dataset.discoveryLocation || form.elements.location.value;
+    form.elements.businessTypes.value = button.dataset.discoveryTypes || "";
+    form.elements.focus.value = button.dataset.discoveryFocus || form.elements.focus.value;
+    form.requestSubmit();
+  }
 
   function renderRows() {
     const tbody = $("#lead-rows");
@@ -119,6 +275,14 @@
       $("#conflict-count").textContent = body.counts?.conflictReviews ?? "0";
       renderRows();
       renderPipeline();
+      if (state.pendingLeadId) {
+        const leadId = state.pendingLeadId;
+        state.pendingLeadId = null;
+        const url = new URL(location.href);
+        url.searchParams.delete("lead");
+        history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+        await openDetail(leadId);
+      }
     } catch (error) {
       state.leads = [];
       renderRows();
@@ -141,6 +305,140 @@
       ${payments.length ? `<h4>Payments</h4><ul class="related-list">${payments.map((item) => `<li><strong>${formatMoney(item.amount_cents, item.currency)}</strong><span>${escapeHtml(stageLabel(item.status))} · ${formatDate(item.paid_at || item.created_at)}</span></li>`).join("")}</ul>` : ""}`;
   };
 
+  const draftObservation = (lead) => {
+    const reason = fitReason(lead);
+    if (/viewport|smaller-screen/i.test(reason)) return "the mobile experience may be worth reviewing";
+    if (/rely on phone/i.test(reason)) return "the site appears to rely mainly on phone calls for new inquiries";
+    if (/service-request|intake form/i.test(reason)) return "there may be an opportunity to make service requests easier online";
+    if (/booking/i.test(reason)) return "there may be an opportunity to make scheduling easier online";
+    if (/legacy|fixed-width|http|insecure/i.test(reason)) return "the website may benefit from a focused modernization";
+    return reason === "Fit reason not recorded" ? "there may be a practical opportunity to improve the website or customer-intake path" : reason.charAt(0).toLowerCase() + reason.slice(1);
+  };
+
+  const emailDraftFor = (lead) => ({
+    to: lead.publicEmail || "",
+    subject: `A practical website idea for ${lead.businessName}`,
+    body: `Hello,\n\nI came across ${lead.businessName} while researching service businesses that may benefit from practical website or customer-intake improvements. I noticed ${draftObservation(lead)}.\n\nI run Palmetto Business Automation. I help small businesses create clearer websites, service-request forms, lead workflows, and simple business systems. If this is already working well for you, no action is needed. If it is something you want to improve, I would be glad to share a straightforward recommendation.\n\nWould a brief discovery call be useful?\n\nBest,\nRoss Wyatt\nPalmetto Business Automation\nhttps://palmettobusinessautomation.com`,
+  });
+
+  function openEmailDraft(lead) {
+    const draft = emailDraftFor(lead);
+    state.emailDraftLeadId = lead.id;
+    state.emailDraftLogged = false;
+    state.emailDraftSourceUrl = lead.websiteUrl || lead.publicContactFormUrl || null;
+    $("#email-draft-to").value = draft.to;
+    $("#email-draft-subject").value = draft.subject;
+    $("#email-draft-body").value = draft.body;
+    refreshEmailDraftRecipientState();
+    $("#detail-dialog").close();
+    $("#email-draft-dialog").showModal();
+    requestAnimationFrame(() => (draft.to ? $("#email-draft-subject") : $("#email-draft-to")).focus());
+  }
+
+  async function recordEmailDraftActivity() {
+    if (state.emailDraftLogged || !state.emailDraftLeadId || isDemo()) return;
+    await api(LEADS_API, { method: "PUT", body: JSON.stringify({
+      action: "activity",
+      id: state.emailDraftLeadId,
+      activityType: "email_drafted",
+      note: "Email draft prepared for manual review. No email was sent.",
+    }) });
+    state.emailDraftLogged = true;
+  }
+
+  const emailDraftValues = () => ({
+    to: $("#email-draft-to").value.trim(),
+    subject: $("#email-draft-subject").value.trim(),
+    body: $("#email-draft-body").value.trim(),
+  });
+
+  const websiteUrlFromRecipient = (value) => {
+    const trimmed = String(value || "").trim();
+    if (!trimmed || trimmed.includes("@")) return null;
+    try {
+      const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+      return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+    } catch {
+      return null;
+    }
+  };
+
+  function refreshEmailDraftRecipientState() {
+    const recipient = $("#email-draft-to");
+    const status = $("#email-draft-status");
+    const emailAction = $("#open-email-app");
+    const sourceAction = $("#open-email-source");
+    const websiteField = $("#email-draft-website");
+    const value = recipient.value.trim();
+    const pastedWebsite = websiteUrlFromRecipient(value);
+    const sourceUrl = pastedWebsite || state.emailDraftSourceUrl;
+    websiteField.textContent = state.emailDraftSourceUrl || "Not saved";
+    if (state.emailDraftSourceUrl) websiteField.href = state.emailDraftSourceUrl;
+    else websiteField.removeAttribute("href");
+    recipient.setCustomValidity("");
+    if (pastedWebsite) recipient.setCustomValidity("Enter an email address, not a website URL.");
+    const validEmail = Boolean(value) && recipient.checkValidity() && !pastedWebsite;
+    recipient.setAttribute("aria-invalid", value && !validEmail ? "true" : "false");
+    emailAction.disabled = !validEmail;
+    sourceAction.hidden = !sourceUrl;
+    if (sourceUrl) {
+      sourceAction.href = sourceUrl;
+      sourceAction.textContent = pastedWebsite ? "Open This Website" : (state.emailDraftSourceUrl === sourceUrl && /contact|quote|estimate|request|inquir/i.test(sourceUrl) ? "Open Contact Page" : "Open Business Website");
+    }
+    if (pastedWebsite) {
+      status.textContent = "That is a website address, not an email. Open the website to find a verified public email such as name@business.com.";
+    } else if (!value) {
+      status.textContent = "No public email is saved for this lead. The saved website is loaded above—open it to find a verified email, or copy the draft for later.";
+    } else if (!validEmail) {
+      status.textContent = "Enter a complete email address such as name@business.com.";
+    } else {
+      status.textContent = "Valid email address. Review the draft, then open it in your email app.";
+    }
+  }
+
+  async function copyEmailDraft() {
+    const draft = emailDraftValues();
+    const status = $("#email-draft-status");
+    try {
+      await navigator.clipboard.writeText(`${draft.to ? `To: ${draft.to}\n` : ""}Subject: ${draft.subject}\n\n${draft.body}`);
+    } catch {
+      status.textContent = "The draft could not be copied. Select the text manually and try again.";
+      return;
+    }
+    try {
+      await recordEmailDraftActivity();
+      status.textContent = "Draft copied. It is still unsent and ready for your review.";
+    } catch {
+      status.textContent = "Draft copied, but its activity could not be recorded. No email was sent.";
+    }
+  }
+
+  async function openDraftInEmailApp() {
+    const draft = emailDraftValues();
+    const recipient = $("#email-draft-to");
+    refreshEmailDraftRecipientState();
+    if (!draft.to || !recipient.checkValidity()) {
+      recipient.focus();
+      return;
+    }
+    try {
+      await recordEmailDraftActivity();
+    } catch {
+      $("#email-draft-status").textContent = "The draft is ready, but its activity could not be recorded. Try again.";
+      return;
+    }
+    const mailto = `mailto:${draft.to}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
+    $("#email-draft-dialog").close();
+    window.location.href = mailto;
+  }
+
+  async function restoreLeadAfterDraft() {
+    const leadId = state.emailDraftLeadId;
+    state.emailDraftLeadId = null;
+    state.emailDraftSourceUrl = null;
+    if (leadId) await openDetail(leadId);
+  }
+
   function renderDetail(body) {
     const lead = body.lead;
     $("#detail-title").textContent = lead.businessName;
@@ -149,7 +447,8 @@
       <div class="detail-actions">
         <button class="button button-primary" type="button" data-detail-action="next">Set Next Action</button>
         <button class="button button-secondary" type="button" data-detail-action="edit">Edit Lead</button>
-        <button class="button button-secondary" type="button" data-detail-action="complete">Complete Next Action</button>
+        <button class="button button-secondary" type="button" data-detail-action="draft_email">Create Email Draft</button>
+        ${lead.nextAction ? `<button class="button button-secondary" type="button" data-detail-action="${lead.nextActionCompleted ? "reopen" : "complete"}">${lead.nextActionCompleted ? "Reopen Next Action" : "Complete Next Action"}</button>` : ""}
         <button class="button button-secondary" type="button" data-detail-action="do_not_contact">Mark Do Not Contact</button>
         <button class="button button-secondary" type="button" data-detail-action="archive">Archive Lead</button>
       </div>
@@ -195,6 +494,10 @@
     });
     $$("[data-detail-action]", $("#detail-content")).forEach((button) => button.addEventListener("click", async () => {
       const action = button.dataset.detailAction;
+      if (action === "draft_email") {
+        openEmailDraft(lead);
+        return;
+      }
       if (action === "edit" || action === "next") {
         $("#detail-dialog").close();
         openLeadForm(lead, action === "next" ? "nextAction" : "businessName");
@@ -209,6 +512,11 @@
       }
       try {
         await api(LEADS_API, { method: "PUT", body: JSON.stringify(data) });
+        if (action === "complete" || action === "reopen") {
+          await load();
+          await openDetail(lead.id);
+          return;
+        }
         $("#detail-dialog").close();
         await load();
       } catch (error) {
@@ -298,6 +606,7 @@
 
   function setView(view) {
     state.view = view;
+    $("#discovery-panel").hidden = view !== "radar";
     $$(".view-tab").forEach((item) => {
       const active = item.dataset.view === view;
       item.classList.toggle("active", active);
@@ -316,7 +625,15 @@
   $("#close-lead").addEventListener("click", () => $("#lead-dialog").close());
   $("#cancel-lead").addEventListener("click", () => $("#lead-dialog").close());
   $("#close-detail").addEventListener("click", () => $("#detail-dialog").close());
+  $("#close-email-draft").addEventListener("click", () => $("#email-draft-dialog").close());
+  $("#cancel-email-draft").addEventListener("click", () => $("#email-draft-dialog").close());
+  $("#copy-email-draft").addEventListener("click", copyEmailDraft);
+  $("#open-email-app").addEventListener("click", openDraftInEmailApp);
+  $("#email-draft-to").addEventListener("input", refreshEmailDraftRecipientState);
+  $("#email-draft-dialog").addEventListener("close", restoreLeadAfterDraft);
   $("#lead-form").addEventListener("submit", saveLead);
+  $("#discovery-form").addEventListener("submit", runDiscovery);
+  $$('.discovery-quick-actions [data-discovery-focus]').forEach((button) => button.addEventListener("click", () => runQuickDiscovery(button)));
   $$(".view-tab").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
   $$('[data-summary]').forEach((button) => button.addEventListener("click", () => {
     $("#filters-form").reset();

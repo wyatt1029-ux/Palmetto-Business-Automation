@@ -13,10 +13,11 @@
       <header class="owner-header">
         <a class="brand" href="/" aria-label="Palmetto Business Automation home"><span class="brand-mark">PBA</span><span class="brand-copy"><strong>Palmetto Business Automation</strong><span>Private owner workspace</span></span></a>
         <nav class="owner-nav" aria-label="Owner workspace navigation">
+          <a href="/owner/">Console</a>
           <a class="active" href="/owner/leads/" aria-current="page">Leads</a>
           <a href="/sow-builder.html">SOWs</a>
-          <a href="/sow-builder.html">Clients &amp; Projects</a>
-          <a href="/payment.html">Payments</a>
+          <a href="/owner/clients-projects/">Clients &amp; Projects</a>
+          <a href="/owner/payments/">Payments</a>
         </nav>
       </header>
 
@@ -31,6 +32,31 @@
         <button class="view-tab" data-view="radar" type="button">New Business Radar</button>
         <button class="view-tab" data-view="all" type="button">All Leads</button>
       </nav>
+
+      <section class="discovery-panel" id="discovery-panel" aria-labelledby="discovery-title" hidden>
+        <div class="panel-heading discovery-heading">
+          <div><p class="eyebrow">Owner-triggered public research</p><h2 id="discovery-title">Find Businesses That May Need Website Help</h2><p>Use a one-click local or statewide search, or choose a city, ZIP code, county, region, or telephone area code. PBA checks public business pages for specific website and workflow opportunities.</p></div>
+        </div>
+        <div class="discovery-quick-actions" aria-label="Quick business searches">
+          <button class="button button-secondary" type="button" data-discovery-types="plumber, electrician, appliance repair, handyman, tree service, landscaping, towing, contractor" data-discovery-focus="new_business">Find new local prospects in this area</button>
+          <button class="button button-secondary" type="button" data-discovery-location="Charleston, SC" data-discovery-types="plumber, electrician, appliance repair, handyman, tree service, landscaping, towing, contractor" data-discovery-focus="website_opportunity">Find Charleston service businesses</button>
+          <button class="button button-secondary" type="button" data-discovery-location="South Carolina" data-discovery-types="plumber, electrician, appliance repair, handyman, tree service, landscaping, towing, contractor" data-discovery-focus="website_opportunity">Find South Carolina service businesses</button>
+          <button class="button button-secondary" type="button" data-discovery-types="plumber, plumbing contractor" data-discovery-focus="website_opportunity">Find plumbers in this area</button>
+          <button class="button button-secondary" type="button" data-discovery-types="marine service, boat repair" data-discovery-focus="website_opportunity">Find marine services in this area</button>
+          <button class="button button-secondary" type="button" data-discovery-types="auto service, auto repair" data-discovery-focus="website_opportunity">Find auto services in this area</button>
+        </div>
+        <form class="discovery-form" id="discovery-form">
+          <label class="discovery-location">Search area<input name="location" required maxlength="120" value="Charleston, SC" placeholder="Charleston, SC · 29577 · 843 area code" autocomplete="off" /></label>
+          <label>Business types <small>Optional, comma-separated</small><input name="businessTypes" maxlength="500" placeholder="contractor, home services, nonprofit" /></label>
+          <label>Search focus<select name="focus"><option value="both" selected>New prospects + website opportunities</option><option value="new_business">New local prospects and launch signals</option><option value="website_opportunity">Website and workflow opportunities</option></select></label>
+          <label>Maximum results<select name="maxResults"><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option></select></label>
+          <button class="button button-primary" id="run-discovery" type="submit">Search Public Web</button>
+        </form>
+        <p class="discovery-note">Search results are temporary suggestions—not saved leads. Each service-type pair uses one provider search per selected focus (two when both focuses are selected) and therefore uses provider quota. Review a suggestion and select Add to Radar to save it. PBA excludes directories, franchise networks, and national chains, then verifies the selected service area against each official business website when possible. Activity strength is a public-web estimate and must be rechecked before outreach. No outreach is sent.</p>
+        <p class="form-error workspace-error" id="discovery-error" role="alert" hidden></p>
+        <p class="discovery-status" id="discovery-status" aria-live="polite"></p>
+        <div class="discovery-results" id="discovery-results"></div>
+      </section>
 
       <section class="summary-grid" aria-label="Lead summaries">
         <button class="summary-card" data-summary="needsAction" type="button"><span>Needs Action</span><strong id="needs-action-count">—</strong><small>Open next steps</small></button>
@@ -108,6 +134,17 @@
     </dialog>
 
     <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title"><div class="dialog-header"><div><p class="eyebrow">Lead detail</p><h2 id="detail-title">Lead</h2></div><button class="icon-button" id="close-detail" type="button" aria-label="Close lead detail">×</button></div><div id="detail-content"></div></dialog>
+    <dialog class="email-draft-dialog" id="email-draft-dialog" aria-labelledby="email-draft-title">
+      <div class="dialog-header"><div><p class="eyebrow">Manual outreach helper</p><h2 id="email-draft-title">Create Email Draft</h2><p>Review and edit every detail. PBA will not send this email automatically.</p></div><button class="icon-button" id="close-email-draft" type="button" aria-label="Close email draft">×</button></div>
+      <div class="email-draft-fields">
+        <div class="email-draft-source"><strong>Business website</strong><small>Loaded from this lead’s saved public information</small><a id="email-draft-website" target="_blank" rel="noreferrer">Not saved</a></div>
+        <label>To <small id="email-draft-to-help">Enter an email containing @. A website address cannot receive email.</small><input id="email-draft-to" type="email" inputmode="email" autocomplete="off" aria-describedby="email-draft-to-help email-draft-status" placeholder="name@business.com" /></label>
+        <label>Subject<input id="email-draft-subject" maxlength="200" /></label>
+        <label class="email-draft-message">Message<textarea id="email-draft-body" maxlength="5000"></textarea></label>
+      </div>
+      <p class="email-draft-status" id="email-draft-status" aria-live="polite"></p>
+      <div class="dialog-actions"><button class="button button-secondary" id="cancel-email-draft" type="button">Close</button><a class="button button-secondary" id="open-email-source" target="_blank" rel="noreferrer" hidden>Open Business Website</a><button class="button button-secondary" id="copy-email-draft" type="button">Copy Draft</button><button class="button button-primary" id="open-email-app" type="button" disabled>Open in Email App</button></div>
+    </dialog>
     <script src="/owner/leads/leads.js" defer></script>
   </body>
 </html>
