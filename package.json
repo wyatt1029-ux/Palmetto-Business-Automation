@@ -7,7 +7,7 @@
     "jose": "^6.1.0"
   },
   "devDependencies": {
-    "wrangler": "^4.125.0"
+    "wrangler": "^4.142.0"
   },
   "scripts": {
     "check": "node --check intake.js && node --check sow.js && node --check payment.js && node --check sow-builder.js && node --check scripts/build-public.mjs && node --check functions/_lib/email.js && node --check functions/_lib/leads.js && node --check functions/_lib/discovery.js && node --check functions/api/intake.js && node --check functions/api/leads.js && node --check functions/owner/api/leads.js && node --check functions/owner/api/discovery.js && node --check functions/owner/api/records.js && node --check functions/owner/api/console.js && node --check functions/api/publish-sow.js && node --check owner/leads/leads.js && node --check owner/records/records.js && node --check owner/console.js && npm --prefix books run check",
