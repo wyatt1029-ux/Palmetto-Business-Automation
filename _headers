@@ -23,6 +23,10 @@
 /sow-builder.html
   Cache-Control: private, no-store
 
+/sow-builder
+  Cache-Control: private, no-store
+  X-Robots-Tag: noindex, nofollow, noarchive
+
 /api/*
   Cache-Control: private, no-store
 

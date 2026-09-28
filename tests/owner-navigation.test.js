@@ -10,7 +10,7 @@ test("every owner header destination resolves to a real page", async () => {
   const routes = new Map([
     ["/owner/", "owner/index.html"],
     ["/owner/leads/", "owner/leads/index.html"],
-    ["/sow-builder.html", "sow-builder.html"],
+    ["/sow-builder", "sow-builder.html"],
     ["/owner/clients-projects/", "owner/clients-projects/index.html"],
     ["/owner/payments/", "owner/payments/index.html"],
   ]);

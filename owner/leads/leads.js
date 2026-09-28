@@ -300,8 +300,8 @@
     const payments = related.payments || [];
     if (!intakes.length && !sows.length && !payments.length) return '<p class="muted">No linked intake, SOW, or payment records yet.</p>';
     return `
-      ${intakes.length ? `<h4>Website intake</h4><ul class="related-list">${intakes.map((item) => `<li><a href="/sow-builder.html?intake=${encodeURIComponent(item.id)}">${escapeHtml(item.customer_number)}</a><span>${escapeHtml(stageLabel(item.status))} · ${formatDate(item.created_at)}</span></li>`).join("")}</ul>` : ""}
-      ${sows.length ? `<h4>SOWs</h4><ul class="related-list">${sows.map((item) => `<li><a href="/sow-builder.html?intake=${encodeURIComponent(item.intake_submission_id)}">${escapeHtml(item.title)} · v${item.version_number}</a><span>${escapeHtml(stageLabel(item.status))} · ${formatMoney(item.amount_cents)}</span></li>`).join("")}</ul>` : ""}
+      ${intakes.length ? `<h4>Website intake</h4><ul class="related-list">${intakes.map((item) => `<li><a href="/sow-builder?intake=${encodeURIComponent(item.id)}">${escapeHtml(item.customer_number)}</a><span>${escapeHtml(stageLabel(item.status))} · ${formatDate(item.created_at)}</span></li>`).join("")}</ul>` : ""}
+      ${sows.length ? `<h4>SOWs</h4><ul class="related-list">${sows.map((item) => `<li><a href="/sow-builder?intake=${encodeURIComponent(item.intake_submission_id)}">${escapeHtml(item.title)} · v${item.version_number}</a><span>${escapeHtml(stageLabel(item.status))} · ${formatMoney(item.amount_cents)}</span></li>`).join("")}</ul>` : ""}
       ${payments.length ? `<h4>Payments</h4><ul class="related-list">${payments.map((item) => `<li><strong>${formatMoney(item.amount_cents, item.currency)}</strong><span>${escapeHtml(stageLabel(item.status))} · ${formatDate(item.paid_at || item.created_at)}</span></li>`).join("")}</ul>` : ""}`;
   };
 
