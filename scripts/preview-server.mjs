@@ -12,7 +12,14 @@ const server = createServer(async (request, response) => {
     const safe = normalize(requested).replace(/^([/\\])+/, "");
     let file = resolve(root, safe || "index.html");
     if (!file.startsWith(root)) throw new Error("Path denied");
-    try { if ((await stat(file)).isDirectory()) file = join(file, "index.html"); } catch {}
+    try {
+      if ((await stat(file)).isDirectory()) file = join(file, "index.html");
+    } catch {
+      if (!extname(file)) {
+        const htmlFile = `${file}.html`;
+        try { await stat(htmlFile); file = htmlFile; } catch {}
+      }
+    }
     try { await stat(file); } catch { file = join(root, "404.html"); response.statusCode = 404; }
     response.setHeader("content-type", types[extname(file).toLowerCase()] || "application/octet-stream");
     createReadStream(file).on("error", () => response.end()).pipe(response);

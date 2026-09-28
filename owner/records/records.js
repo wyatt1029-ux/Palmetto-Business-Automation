@@ -42,7 +42,7 @@ const leadLink = (record) => record.lead_id
 
 const clientRow = (record) => `<tr>
   <td>${leadLink(record)}<small>${escapeHtml(record.customer_number)}</small></td>
-  <td>${record.sow_id ? `<a class="record-link" href="/sow-builder.html?intake=${encodeURIComponent(record.id)}">${escapeHtml(record.sow_title || "Open SOW")}</a><small>Version ${escapeHtml(record.sow_version)}</small>` : `<a class="record-link" href="/sow-builder.html?intake=${encodeURIComponent(record.id)}">Create SOW</a>`}</td>
+  <td>${record.sow_id ? `<a class="record-link" href="/sow-builder?intake=${encodeURIComponent(record.id)}">${escapeHtml(record.sow_title || "Open SOW")}</a><small>Version ${escapeHtml(record.sow_version)}</small>` : `<a class="record-link" href="/sow-builder?intake=${encodeURIComponent(record.id)}">Create SOW</a>`}</td>
   <td>${statusPill(record.sow_status || record.status)}</td>
   <td>${formatMoney(record.amount_cents)}</td>
   <td>${escapeHtml(formatDate(record.updated_at))}</td>
@@ -50,7 +50,7 @@ const clientRow = (record) => `<tr>
 
 const paymentRow = (record) => `<tr>
   <td>${leadLink(record)}<small>${escapeHtml(record.customer_number)}</small></td>
-  <td><a class="record-link" href="/sow-builder.html?intake=${encodeURIComponent(record.intake_submission_id)}">${escapeHtml(record.title)}</a><small>${escapeHtml(label(record.billing_type))}</small></td>
+  <td><a class="record-link" href="/sow-builder?intake=${encodeURIComponent(record.intake_submission_id)}">${escapeHtml(record.title)}</a><small>${escapeHtml(label(record.billing_type))}</small></td>
   <td>${formatMoney(record.amount_cents)}</td>
   <td>${statusPill(record.payment_status)}</td>
   <td>${statusPill(record.billing_status)}</td>

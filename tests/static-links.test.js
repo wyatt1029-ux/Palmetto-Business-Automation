@@ -28,15 +28,20 @@ test("owner builder does not define a circular pretty-URL redirect", async () =>
   assert.doesNotMatch(redirects, /^\/sow-builder(?:\.html)?\s/m);
 });
 
-test("extensionless owner builder redirects to the Access-protected route", async () => {
-  const { onRequestGet } = await import("../functions/sow-builder.js");
-  const response = onRequestGet();
+test("owner builder uses Cloudflare's clean static route without a circular Function redirect", async () => {
+  const [payments, clients, ownerHome] = await Promise.all([
+    readFile(new URL("../owner/payments/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../owner/clients-projects/index.html", import.meta.url), "utf8"),
+    readFile(new URL("../owner/index.html", import.meta.url), "utf8"),
+  ]);
 
-  assert.equal(response.status, 302);
-  assert.equal(
-    response.headers.get("location"),
-    "https://palmettobusinessautomation.com/sow-builder.html",
-  );
+  for (const page of [payments, clients, ownerHome]) {
+    assert.match(page, /href="\/sow-builder"/);
+    assert.doesNotMatch(page, /href="\/sow-builder\.html/);
+  }
+
+  const previewServer = await readFile(new URL("../scripts/preview-server.mjs", import.meta.url), "utf8");
+  assert.match(previewServer, /const htmlFile = `\$\{file\}\.html`/);
 });
 
 test("public marketing navigation and starting prices stay available", async () => {
