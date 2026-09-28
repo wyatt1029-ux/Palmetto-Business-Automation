@@ -53,6 +53,8 @@ const fingerprintedAssets = [
   "owner/leads/leads.js",
   "owner/records/records.css",
   "owner/records/records.js",
+  "owner/console.css",
+  "owner/console.js",
 ];
 const legacyAssetsExcludedFromBuild = [
   "assets/logo.png",

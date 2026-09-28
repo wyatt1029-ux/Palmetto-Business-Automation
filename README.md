@@ -18,6 +18,7 @@ Static marketing website for Palmetto Business Automation, LLC.
 - `/about/`
 - `/faq/`
 - `/contact/`
+- `/owner/` (owner-only platform console; protected by Cloudflare Access)
 - `/owner/leads/` (owner-only; protected by Cloudflare Access)
 
 ## Project Structure
@@ -81,6 +82,11 @@ npm run preview
 Open `http://127.0.0.1:8788/owner/leads/?demo=1`. Demo mode is hostname-gated to localhost and
 does not call the database or search provider. Open New Business Radar and run a search to see a
 sanitized candidate. Remove `?demo=1` to exercise the owner-authenticated production path.
+
+The Platform Owner Console also has a sanitized local-only preview at
+`http://127.0.0.1:8788/owner/?demo=1`. Its portfolio metrics never run on deployed hosts.
+
+The private Platform Owner Console combines server-side PostHog aggregate analytics, Sentry unresolved-issue counts, and direct HTTPS availability checks. Configure `POSTHOG_PERSONAL_API_KEY`, `SENTRY_AUTH_TOKEN`, and `SENTRY_ORG_SLUG` as Cloudflare secrets/variables. Optional `PLATFORM_SITES_JSON` is a JSON array of `{ id, name, url, posthogProjectId, sentryProjectSlug }` records. Tokens are never sent to the browser, and provider failures are isolated per site.
 
 ## Editing
 

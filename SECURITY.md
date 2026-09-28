@@ -25,6 +25,7 @@ passwords, payment details, or client data in the initial message.
   `OWNER_EMAIL` values used by the existing owner APIs before exposing the route. The legacy
   `/api/leads` handler also requires a valid Access JWT and cannot return data publicly.
 - `/owner/api/discovery` uses the same Access JWT, owner-email allowlist, and same-origin checks.
+- `/owner/api/console` requires the same owner authorization. PostHog and Sentry API tokens are server-side Cloudflare secrets; the browser receives aggregate counts only. Monitored URLs must be public HTTPS endpoints to prevent private-network requests.
   Public-site inspection rejects local/private hosts, non-HTTP(S) targets, credentials in URLs, and
   nonstandard ports; it also limits request duration and inspected HTML size. The Brave Search API
   key is a Cloudflare Pages secret and is never returned to the browser.
