@@ -13,6 +13,7 @@ import {
 } from "./ledger.js";
 import { postJournal, reverseJournal } from "./journals.js";
 import { stripeForm, stripeGet, verifyStripeWebhook } from "./stripe.js";
+import { recurringSubscriptionFields } from "./billing.js";
 
 const headers = {
   "content-type": "application/json; charset=utf-8",
@@ -174,6 +175,11 @@ async function createInvoice(sql, env, actor, data) {
   if (dueDate < issueDate) throw Object.assign(new Error("Due date cannot precede issue date."), { status: 422 });
   const tax = Number(data.taxCents || 0);
   if (!Number.isSafeInteger(tax) || tax < 0) throw Object.assign(new Error("Tax amount is invalid."), { status: 422 });
+  const recurring = Boolean(data.recurring);
+  const billingDay = recurring ? Number(data.billingDay) : null;
+  if (recurring && (!Number.isInteger(billingDay) || billingDay < 1 || billingDay > 28)) {
+    throw Object.assign(new Error("Choose a monthly billing day from 1 to 28."), { status: 422 });
+  }
   const memo = String(data.memo || "").trim().slice(0, 2_000) || lines.map((line) => line.description).join(" · ").slice(0, 2_000);
   const invoiceFooter = String(data.invoiceFooter || "").trim().slice(0, 2_000) || null;
   const customFields = Array.isArray(data.customFields) ? data.customFields.slice(0, 4).map((field) => ({
@@ -192,11 +198,11 @@ async function createInvoice(sql, env, actor, data) {
     sql`
       insert into accounting_invoices
         (id, company_id, customer_id, sow_version_id, invoice_number, issue_date, due_date,
-         status, subtotal_cents, tax_cents, payment_terms, memo, recurring)
+         status, subtotal_cents, tax_cents, payment_terms, memo, recurring, billing_day)
       values
         (${invoiceId}, ${companyId(env)}, ${customerId}, ${data.sowVersionId || null},
          ${invoiceNumber}, ${issueDate}, ${dueDate}, 'draft', ${amount}, ${tax},
-         ${data.paymentTerms || "Due on receipt"}, ${memo}, ${Boolean(data.recurring)})
+         ${data.paymentTerms || "Due on receipt"}, ${memo}, ${recurring}, ${billingDay})
     `,
     sql`
       update accounting_invoices
@@ -243,6 +249,10 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
   `;
   if (!rows.length) throw Object.assign(new Error("Open invoice not found."), { status: 404 });
   const invoice = rows[0];
+  if (invoice.stripe_invoice_id) {
+    const existingInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(invoice.stripe_invoice_id)}`);
+    return { invoiceUrl: existingInvoice.hosted_invoice_url || null, setupUrl: null, alreadyPrepared: true };
+  }
   let stripeCustomerId = invoice.stripe_customer_id;
   if (!stripeCustomerId) {
     const customer = await stripeForm(env, "/customers", formBody({
@@ -266,36 +276,7 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
     "metadata[payment_terms_summary]": invoice.payment_terms || "Due on receipt",
   };
   let stripeInvoice;
-  let subscription = null;
-  if (recurring) {
-    subscription = await stripeForm(env, "/subscriptions", formBody({
-      customer: stripeCustomerId,
-      payment_behavior: "default_incomplete",
-      "payment_settings[save_default_payment_method]": "on_subscription",
-      "items[0][price_data][currency]": invoice.currency,
-      "items[0][price_data][unit_amount]": remaining,
-      "items[0][price_data][recurring][interval]": "month",
-      "items[0][price_data][product_data][name]": invoice.invoice_number,
-      "items[0][price_data][product_data][description]": invoice.memo || "PBA professional services",
-      ...metadata,
-    }), `invoice-subscription:${invoice.id}:${remaining}`);
-    const latestInvoiceId = typeof subscription.latest_invoice === "string"
-      ? subscription.latest_invoice
-      : subscription.latest_invoice?.id;
-    if (!latestInvoiceId) throw Object.assign(new Error("Stripe did not create the initial invoice."), { status: 502 });
-    stripeInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(latestInvoiceId)}`);
-    if (!stripeInvoice.hosted_invoice_url && stripeInvoice.status === "draft") {
-      stripeInvoice = await stripeForm(
-        env,
-        `/invoices/${encodeURIComponent(latestInvoiceId)}/finalize`,
-        formBody({}),
-        `invoice-finalize:${latestInvoiceId}`,
-      );
-    }
-    if (!stripeInvoice.hosted_invoice_url) {
-      stripeInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(latestInvoiceId)}`);
-    }
-  } else {
+  {
     const amountPaid = Number(invoice.amount_paid_cents);
     const invoiceLines = amountPaid > 0
       ? [{ description: `Remaining balance for ${invoice.invoice_number}`, quantity: 1, amountCents: remaining }]
@@ -341,16 +322,84 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
   await sql`
     update accounting_invoices
     set stripe_invoice_id = ${stripeInvoice.id},
-        stripe_subscription_id = ${subscription?.id || null},
         updated_at = now()
     where id = ${invoice.id}
   `;
   await writeAudit(sql, env, actor, "invoice.collection_created", "invoice", invoice.id, {
     stripeInvoiceId: stripeInvoice.id,
-    stripeSubscriptionId: subscription?.id || null,
     recurring,
   });
-  return stripeInvoice.hosted_invoice_url;
+  return { invoiceUrl: stripeInvoice.hosted_invoice_url, setupUrl: null };
+}
+
+async function createRecurringPaymentSetup(sql, env, actor, invoiceId) {
+  const rows = await sql`
+    select i.*, c.name customer_name, c.email customer_email, c.customer_number,
+      c.stripe_customer_id
+    from accounting_invoices i join accounting_customers c on c.id = i.customer_id
+    where i.id = ${invoiceId} and i.company_id = ${companyId(env)}
+  `;
+  if (!rows.length) throw Object.assign(new Error("Invoice not found."), { status: 404 });
+  const invoice = rows[0];
+  if (!invoice.recurring) throw Object.assign(new Error("This invoice is not set up for monthly billing."), { status: 422 });
+  if (invoice.status !== "paid" || Number(invoice.amount_paid_cents) < Number(invoice.total_cents)) {
+    throw Object.assign(new Error("The initial service-period invoice must be paid before setting up monthly autopay."), { status: 409 });
+  }
+  if (
+    invoice.stripe_setup_checkout_url && invoice.stripe_subscription_id &&
+    invoice.stripe_setup_checkout_expires_at && new Date(invoice.stripe_setup_checkout_expires_at).getTime() > Date.now() + 60_000
+  ) {
+    return { setupUrl: invoice.stripe_setup_checkout_url, billingDay: invoice.billing_day, alreadyPrepared: true };
+  }
+  let stripeCustomerId = invoice.stripe_customer_id;
+  if (!stripeCustomerId) {
+    const customer = await stripeForm(env, "/customers", formBody({
+      name: invoice.customer_name,
+      email: invoice.customer_email,
+      "metadata[customer_number]": invoice.customer_number,
+    }), `customer:${invoice.customer_id}`);
+    stripeCustomerId = customer.id;
+    await sql`
+      update accounting_customers set stripe_customer_id = ${stripeCustomerId}, updated_at = now()
+      where id = ${invoice.customer_id}
+    `;
+  }
+  const subscriptionData = recurringSubscriptionFields({
+    customerId: stripeCustomerId,
+    invoiceId: invoice.id,
+    customerNumber: invoice.customer_number,
+    currency: invoice.currency,
+    billingDay: invoice.billing_day,
+    now: new Date(),
+    subtotalCents: Number(invoice.subtotal_cents),
+    taxCents: Number(invoice.tax_cents),
+    memo: invoice.memo || invoice.invoice_number,
+  });
+  const { anchor, fields } = subscriptionData;
+  const subscription = await stripeForm(env, "/subscriptions", formBody(fields), `invoice-subscription:${invoice.id}:${anchor.date}:${invoice.total_cents}`);
+  const setupSession = await stripeForm(env, "/checkout/sessions", formBody({
+    mode: "setup",
+    customer: stripeCustomerId,
+    success_url: `${env.PUBLIC_BOOKS_URL || "https://books.palmettobusinessautomation.com"}/?payment_setup=complete`,
+    cancel_url: `${env.PUBLIC_BOOKS_URL || "https://books.palmettobusinessautomation.com"}/?payment_setup=cancelled`,
+    "setup_intent_data[metadata][accounting_invoice_id]": invoice.id,
+    "setup_intent_data[metadata][stripe_subscription_id]": subscription.id,
+    "metadata[purpose]": "recurring_payment_setup",
+  }), `invoice-payment-setup:${invoice.id}:${subscription.id}:${new Date().toISOString().slice(0, 10)}`);
+  await sql`
+    update accounting_invoices
+    set stripe_subscription_id = ${subscription.id},
+        stripe_setup_checkout_url = ${setupSession.url},
+        stripe_setup_checkout_expires_at = to_timestamp(${setupSession.expires_at}),
+        updated_at = now()
+    where id = ${invoice.id}
+  `;
+  await writeAudit(sql, env, actor, "invoice.recurring_setup_created", "invoice", invoice.id, {
+    stripeSubscriptionId: subscription.id,
+    billingDay: Number(invoice.billing_day),
+    firstRenewalDate: anchor.date,
+  });
+  return { setupUrl: setupSession.url, billingDay: Number(invoice.billing_day), firstRenewalDate: anchor.date };
 }
 
 async function createExpense(sql, env, actor, data) {
@@ -947,6 +996,33 @@ async function recordStripePayment(sql, env, event) {
   ]);
 }
 
+async function recordRecurringPaymentMethodSetup(sql, env, event) {
+  const session = event.data.object;
+  if (session.mode !== "setup" || !session.setup_intent) return;
+  const setupIntentId = typeof session.setup_intent === "string" ? session.setup_intent : session.setup_intent.id;
+  const setupIntent = await stripeGet(env, `/setup_intents/${encodeURIComponent(setupIntentId)}`);
+  const invoiceId = setupIntent.metadata?.accounting_invoice_id;
+  const subscriptionId = setupIntent.metadata?.stripe_subscription_id;
+  const paymentMethodId = typeof setupIntent.payment_method === "string"
+    ? setupIntent.payment_method
+    : setupIntent.payment_method?.id;
+  if (!invoiceId || !subscriptionId || !paymentMethodId || setupIntent.status !== "succeeded") return;
+  await stripeForm(env, `/subscriptions/${encodeURIComponent(subscriptionId)}`, formBody({
+    default_payment_method: paymentMethodId,
+    "payment_settings[save_default_payment_method]": "on_subscription",
+  }), `invoice-default-payment-method:${invoiceId}:${paymentMethodId}`);
+  const rows = await sql`
+    update accounting_invoices
+    set payment_method_setup_at = now(), updated_at = now()
+    where id = ${invoiceId} and company_id = ${companyId(env)}
+      and stripe_subscription_id = ${subscriptionId}
+    returning id
+  `;
+  if (rows.length) await writeAudit(sql, env, "system:stripe", "invoice.payment_method_setup", "invoice", invoiceId, {
+    stripeSubscriptionId: subscriptionId,
+  });
+}
+
 async function handleStripeWebhook(request, env) {
   const raw = await request.text();
   if (!await verifyStripeWebhook(raw, request.headers.get("stripe-signature"), env.STRIPE_WEBHOOK_SECRET)) {
@@ -961,7 +1037,9 @@ async function handleStripeWebhook(request, env) {
   `;
   if (!processed.length) return new Response("ok");
   try {
-    if (["checkout.session.completed", "checkout.session.async_payment_succeeded", "invoice.paid"].includes(event.type)) {
+    if (event.type === "checkout.session.completed" && event.data.object.mode === "setup") {
+      await recordRecurringPaymentMethodSetup(sql, env, event);
+    } else if (["checkout.session.completed", "checkout.session.async_payment_succeeded", "invoice.paid"].includes(event.type)) {
       await recordStripePayment(sql, env, event);
     } else if (event.type === "financial_connections.account.refreshed_transactions") {
       await syncBankTransactions(sql, env, "system:stripe", false);
@@ -1179,7 +1257,9 @@ async function api(request, env, actor) {
   if (path === "/api/invoices" && method === "GET") {
     return json({ invoices: await sql`
       select i.id, i.invoice_number, i.issue_date, i.due_date, i.status, i.total_cents,
-        i.amount_paid_cents, i.recurring, c.name customer_name, c.customer_number
+        i.amount_paid_cents, i.recurring, i.billing_day, i.payment_method_setup_at,
+        (i.stripe_setup_checkout_url is not null and i.stripe_setup_checkout_expires_at > now()) setup_link_ready,
+        c.name customer_name, c.customer_number
       from accounting_invoices i join accounting_customers c on c.id = i.customer_id
       where i.company_id = ${companyId(env)}
       order by i.issue_date desc, i.created_at desc limit 200
@@ -1190,7 +1270,11 @@ async function api(request, env, actor) {
   }
   const collectInvoiceId = routeId(path, /^\/api\/invoices\/([^/]+)\/collect$/);
   if (collectInvoiceId && method === "POST") {
-    return json({ checkoutUrl: await createStripeCollection(sql, env, actor.email, collectInvoiceId) });
+    return json(await createStripeCollection(sql, env, actor.email, collectInvoiceId));
+  }
+  const setupInvoiceId = routeId(path, /^\/api\/invoices\/([^/]+)\/setup$/);
+  if (setupInvoiceId && method === "POST") {
+    return json(await createRecurringPaymentSetup(sql, env, actor.email, setupInvoiceId));
   }
   if (path === "/api/expenses" && method === "GET") {
     return json({ expenses: await sql`

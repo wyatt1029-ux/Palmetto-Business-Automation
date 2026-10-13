@@ -353,6 +353,8 @@ function Sales({ customers, reloadCustomers }) {
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
   const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [setupUrl, setSetupUrl] = useState("");
+  const [recurringEnabled, setRecurringEnabled] = useState(false);
   const [invoiceLines, setInvoiceLines] = useState([{ description: "", quantity: "1", amount: "" }]);
 
   const createInvoice = async (event) => {
@@ -375,8 +377,9 @@ function Sales({ customers, reloadCustomers }) {
         invoiceFooter: form.get("invoiceFooter"),
         customFields: [0, 1, 2, 3].map((index) => ({ name: form.get(`customName${index}`), value: form.get(`customValue${index}`) })).filter((field) => field.name && field.value),
         recurring: form.get("recurring") === "on",
+        billingDay: form.get("billingDay"),
       }) });
-      setModal(""); setInvoiceLines([{ description: "", quantity: "1", amount: "" }]); setNotice("Invoice created and posted to accounts receivable."); invoices.reload();
+      setModal(""); setInvoiceLines([{ description: "", quantity: "1", amount: "" }]); setRecurringEnabled(false); setNotice("Invoice created and posted to accounts receivable."); invoices.reload();
     } catch (requestError) { setError(requestError.message); }
     finally { setWorking(false); }
   };
@@ -400,8 +403,21 @@ function Sales({ customers, reloadCustomers }) {
     setWorking(true); setError("");
     try {
       const result = await api(`/api/invoices/${invoice.id}/collect`, { method: "POST" });
-      setCheckoutUrl(result.checkoutUrl);
+      setCheckoutUrl(result.invoiceUrl || "");
+      setSetupUrl(result.setupUrl || "");
       setModal("payment-link");
+    } catch (requestError) { setError(requestError.message); }
+    finally { setWorking(false); }
+  };
+
+  const setupRecurring = async (invoice) => {
+    setWorking(true); setError("");
+    try {
+      const result = await api(`/api/invoices/${invoice.id}/setup`, { method: "POST" });
+      setCheckoutUrl("");
+      setSetupUrl(result.setupUrl || "");
+      setModal("payment-link");
+      invoices.reload();
     } catch (requestError) { setError(requestError.message); }
     finally { setWorking(false); }
   };
@@ -420,7 +436,7 @@ function Sales({ customers, reloadCustomers }) {
             finally { setWorking(false); }
           }}>Sync approved SOWs</button>
           <button className="button button-secondary" onClick={() => setModal("customer")}>Add customer</button>
-          <button className="button button-primary" onClick={() => setModal("invoice")}>New invoice</button>
+          <button className="button button-primary" onClick={() => { setRecurringEnabled(false); setModal("invoice"); }}>New invoice</button>
         </>}
       />
       <Notice message={notice} onClose={() => setNotice("")} />
@@ -434,17 +450,21 @@ function Sales({ customers, reloadCustomers }) {
               const balance = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
               return (
                 <div className="table-row" key={invoice.id}>
-                  <strong data-label="Invoice">{invoice.invoice_number}<small>{invoice.recurring ? "Monthly autopay" : "One-time"}</small></strong>
+                  <strong data-label="Invoice">{invoice.invoice_number}<small>{invoice.recurring ? `Monthly · renews on the ${invoice.billing_day}${invoice.billing_day === 1 ? "st" : invoice.billing_day === 2 ? "nd" : invoice.billing_day === 3 ? "rd" : "th"} · ${invoice.payment_method_setup_at ? "payment method ready" : invoice.setup_link_ready ? "payment setup pending" : "initial invoice first"}` : "One-time"}</small></strong>
                   <span data-label="Customer">{invoice.customer_name}<small>{invoice.customer_number}</small></span>
                   <span data-label="Due">{shortDate(invoice.due_date)}</span>
                   <span data-label="Status"><Status tone={invoice.status === "paid" ? "good" : "warn"}>{invoice.status}</Status></span>
                   <b data-label="Balance">{money(balance)}</b>
-                  <span>{balance > 0 ? <button className="mini-button" onClick={() => collect(invoice)} disabled={working}>Copy pay link</button> : "—"}</span>
+                  <span>{invoice.recurring && balance === 0 && !invoice.payment_method_setup_at
+                    ? <button className="mini-button" onClick={() => setupRecurring(invoice)} disabled={working}>{invoice.setup_link_ready ? "Copy setup link" : "Set up autopay"}</button>
+                    : balance > 0
+                      ? <button className="mini-button" onClick={() => collect(invoice)} disabled={working}>{invoice.stripe_invoice_id ? "Open payment link" : "Send invoice"}</button>
+                      : invoice.recurring ? "Autopay ready" : "—"}</span>
                 </div>
               );
             })}
           </div>
-        ) : <Empty title="No invoices yet" copy="Sync an approved SOW or create your first customer invoice." action={<button className="button button-primary" onClick={() => setModal("invoice")}>Create invoice</button>} />}
+        ) : <Empty title="No invoices yet" copy="Sync an approved SOW or create your first customer invoice." action={<button className="button button-primary" onClick={() => { setRecurringEnabled(false); setModal("invoice"); }}>Create invoice</button>} />}
       </section>
       <Modal open={modal === "customer"} title="Add a customer" copy="Use this for clients who did not begin with the online intake and SOW workflow." onClose={() => setModal("")}>
         <Notice message={error} tone="error" onClose={() => setError("")} />
@@ -456,17 +476,27 @@ function Sales({ customers, reloadCustomers }) {
           <button className="button button-primary full" disabled={working}>{working ? "Adding…" : "Add customer"}</button>
         </form>
       </Modal>
-      <Modal open={modal === "payment-link"} title="Stripe payment link" copy="Send this secure checkout link to the customer, or open it now to verify the payment experience." onClose={() => setModal("")}>
+      <Modal open={modal === "payment-link"} title={setupUrl ? "Stripe monthly payment setup" : "Stripe invoice link"} copy={setupUrl ? "The initial invoice has been paid. Share this secure link so Tidal can authorize the card for future monthly renewals. Autopay begins on the selected renewal date." : "Stripe has emailed the invoice. You can also copy or open its secure payment link."} onClose={() => setModal("")}>
         <div className="form-grid">
-          <label className="full"><span>Secure checkout URL</span><input value={checkoutUrl} readOnly /></label>
-          <button className="button button-secondary" type="button" onClick={async () => {
-            await navigator.clipboard.writeText(checkoutUrl);
-            setNotice("Secure Stripe payment link copied to the clipboard.");
-          }}>Copy link</button>
-          <a className="button button-primary" href={checkoutUrl} target="_blank" rel="noreferrer">Open Stripe checkout</a>
+          {checkoutUrl && <>
+            <label className="full"><span>Initial invoice payment URL</span><input value={checkoutUrl} readOnly /></label>
+            <button className="button button-secondary" type="button" onClick={async () => {
+              await navigator.clipboard.writeText(checkoutUrl);
+              setNotice("Initial Stripe invoice link copied to the clipboard.");
+            }}>Copy invoice link</button>
+            <a className="button button-primary" href={checkoutUrl} target="_blank" rel="noreferrer">Open invoice</a>
+          </>}
+          {setupUrl && <>
+            <label className="full"><span>Monthly payment setup URL</span><input value={setupUrl} readOnly /></label>
+            <button className="button button-secondary" type="button" onClick={async () => {
+              await navigator.clipboard.writeText(setupUrl);
+              setNotice("Monthly payment setup link copied to the clipboard.");
+            }}>Copy setup link</button>
+            <a className="button button-primary" href={setupUrl} target="_blank" rel="noreferrer">Open payment setup</a>
+          </>}
         </div>
       </Modal>
-      <Modal open={modal === "invoice"} title="Create an invoice" copy="PBA posts the invoice to accounts receivable, then Stripe sends one-time invoices or starts monthly autopay." onClose={() => setModal("")}>
+      <Modal open={modal === "invoice"} title="Create an invoice" copy="PBA first posts the invoice to accounts receivable. Use its separate Stripe action afterward to email the invoice and, for monthly billing, set up future autopay." onClose={() => setModal("")}>
         <Notice message={error} tone="error" onClose={() => setError("")} />
         <form className="form-grid" onSubmit={createInvoice}>
           <label className="full"><span>Customer</span><select name="customerId" required><option value="">Choose a customer</option>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.customer_number} · {customer.organization || customer.name}</option>)}</select></label>
@@ -478,15 +508,17 @@ function Sales({ customers, reloadCustomers }) {
               {invoiceLines.length > 1 && <button className="mini-button" type="button" onClick={() => setInvoiceLines(invoiceLines.filter((_, itemIndex) => itemIndex !== index))}>Remove</button>}
             </div>)}
           </div>
-          <label><span>Sales tax to record</span><div className="money-input"><b>$</b><input type="number" name="tax" min="0" step=".01" defaultValue="0.00" /></div></label>
+          <label><span>Sales tax (manual amount)</span><div className="money-input"><b>$</b><input type="number" name="tax" min="0" step=".01" defaultValue="0.00" /></div></label>
+          <small className="full form-help">PBA Books does not calculate tax. For Tidal Marine Electronics’ described monthly hosted-website and maintenance service, SCDOR advised that the subscription is taxable. The current reference rate for its Charleston address is 9%; on a $150 pre-tax charge, that is $13.50. Verify the customer’s delivery location, current rate, and whether the agreed price is tax-inclusive before sending. See the internal South Carolina tax note in books/docs.</small>
           <label><span>Issue date</span><input type="date" name="issueDate" defaultValue={today} required /></label>
           <label><span>Due date</span><input type="date" name="dueDate" defaultValue={today} required /></label>
           <label className="full"><span>Payment terms</span><input name="paymentTerms" defaultValue="Due on receipt" required /></label>
           <label className="full"><span>Memo for the customer</span><textarea name="memo" rows="3" placeholder="Thank you for partnering with PBA." /></label>
           <label className="full"><span>Footer / legal note</span><textarea name="invoiceFooter" rows="2" placeholder="Payment is due according to the terms above." /></label>
           <div className="full"><span>Custom fields <small>Optional · up to four</small></span>{[0, 1, 2, 3].map((index) => <div className="custom-field-row" key={index}><input name={`customName${index}`} placeholder={index === 0 ? "Customer number" : "Label"} /><input name={`customValue${index}`} placeholder={index === 0 ? "PBA-2026-001001" : "Value"} /></div>)}</div>
-          <label className="check-label full"><input type="checkbox" name="recurring" defaultChecked /><span><strong>Monthly automatic payment</strong><small>Stripe securely saves the customer’s payment method and charges monthly.</small></span></label>
-          <button className="button button-primary full" disabled={working || !customers.length}>{working ? "Creating…" : "Create and send through Stripe"}</button>
+          <label className="check-label full"><input type="checkbox" name="recurring" checked={recurringEnabled} onChange={(event) => setRecurringEnabled(event.target.checked)} /><span><strong>Monthly automatic payment</strong><small>After the first invoice is paid, PBA Books can create a separate card-authorization link. Monthly automatic charges start on the selected day.</small></span></label>
+          {recurringEnabled && <label className="full"><span>Monthly renewal day</span><select name="billingDay" defaultValue="7">{Array.from({ length: 28 }, (_, index) => index + 1).map((day) => <option value={day} key={day}>{day}{day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th"} of each month</option>)}</select></label>}
+          <button className="button button-primary full" disabled={working || !customers.length}>{working ? "Creating…" : "Create invoice in PBA Books"}</button>
         </form>
       </Modal>
     </>

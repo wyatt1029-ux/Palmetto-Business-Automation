@@ -11,7 +11,7 @@ Private bookkeeping software for Palmetto Business Automation. The application i
   the events used to record payments, fees, refunds, and payouts.
 - Cloudflare R2 stores receipt and vendor-document bytes privately.
 - Vendor bills are tracked, but the application never initiates a vendor payment.
-- Sales-tax amounts can be recorded; tax calculation and filing are intentionally excluded.
+- Sales-tax amounts can be recorded and posted to Sales Tax Payable; tax determination, calculation, collection registration, and filing remain owner responsibilities. See the internal [South Carolina sales-tax note](docs/south-carolina-sales-tax.md).
 
 ## Local validation
 
@@ -39,11 +39,22 @@ The production Worker rejects the bypass.
 
 ## Neon setup
 
-Apply `migrations/0001_accounting.sql` and then `migrations/0002_invoice_customization.sql` after the existing root `schema.sql`. Use a separate Neon
+Apply `migrations/0001_accounting.sql`, `migrations/0002_invoice_customization.sql`, and `migrations/0003_recurring_billing_schedule.sql` after the existing root `schema.sql`. Use a separate Neon
 development branch first. The migration creates a service-business chart of accounts, the 2026
 accounting period, invoice/bill sequences, the immutable journal, banking/reconciliation records,
 document metadata, import history, audit events, and the invoice memo, footer, and custom-field
-storage used when PBA sends invoices through Stripe.
+storage used when PBA sends invoices through Stripe. The recurring billing migration stores a
+monthly anchor day and the Stripe payment-method setup state; it is additive and safe to rerun.
+
+For a recurring invoice, PBA Books first emails the initial service-period invoice. Once that
+invoice is paid, the owner can create a secure Stripe setup link for the customer to authorize
+future automatic payments. The recurring Stripe subscription begins on the selected day of the
+next month, without prorating the initial service period; its monthly service and manually entered
+tax appear as separate recurring invoice lines. Share the setup link with the customer and confirm
+the payment-method setup status before relying on automatic collection. The tax amount is fixed
+from the amount entered; PBA Books does not calculate future tax changes. Verify the applicable
+rate and update the billing arrangement when needed. Setup links expire; PBA Books can create a
+replacement link if the customer has not completed setup before expiration.
 
 Before production use, have the opening balance and chart of accounts reviewed against the
 December 31, 2025 statement and existing books.
