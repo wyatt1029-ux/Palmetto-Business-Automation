@@ -56,8 +56,9 @@ from the amount entered; PBA Books does not calculate future tax changes. Verify
 rate and update the billing arrangement when needed. Setup links expire; PBA Books can create a
 replacement link if the customer has not completed setup before expiration.
 
-Before production use, have the opening balance and chart of accounts reviewed against the
-December 31, 2025 statement and existing books.
+The owner confirmed on October 13, 2026 that there is no opening balance to enter. Do not create
+a nonzero opening-balance journal entry. Review the chart of accounts against the December 31,
+2025 statement and existing books before production use.
 
 ## Cloudflare setup
 
@@ -106,4 +107,6 @@ Subscribe the accounting webhook endpoint to:
 ## Approval gate
 
 Do not run the migration against production, create live Stripe sessions, connect the live bank,
-or deploy the Worker until the accounting branch and opening balances are approved.
+or deploy the Worker until the chart of accounts has been reviewed and production access/secrets
+are configured. The owner has confirmed that the opening balance is zero; no opening-balance
+entry should be fabricated.

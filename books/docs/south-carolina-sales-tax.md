@@ -13,14 +13,14 @@ Treat this as guidance for the service described to SCDOR. It does not, by itsel
 ## Tidal Marine Electronics billing reference
 
 - Service start: October 7, 2026.
-- Monthly service: $150, including up to one hour of basic picture or text changes.
+- Monthly service: $150 before tax, including up to one hour of basic picture or text changes. Owner confirmed the price is tax-exclusive on October 13, 2026.
 - Billing cadence discussed: full monthly fee beginning on the service start date and recurring on the 7th; no mid-month proration.
 - Subscriber location supplied: 937 Wappoo Road Unit 3B, Charleston, SC 29407. The address was checked against Charleston city parcel/municipal information and appears to be within the City of Charleston.
 - Current rate reference: 9% for Charleston, Charleston County, in the SCDOR municipality rate table available on the review date. Confirm the exact delivery address and current rate in SCDOR's address/rate lookup at invoice time; municipal boundaries and rates can change.
 
-If $150 is the agreed **pre-tax** monthly price, the reference calculation is $150.00 × 9% = $13.50 tax, for $163.50 due each monthly period. Confirm the agreement permits adding tax on top before issuing. If $150 was instead agreed as a tax-inclusive total, do not add $13.50; at a 9% rate, the included tax portion of $150 is approximately $12.39 (rounded to cents), with $137.61 as the pre-tax portion. Confirm the intended price treatment with the customer and SCDOR before first billing.
+The owner confirmed that the agreed $150 monthly price is **before tax** on October 13, 2026. At the current 9% reference rate, the calculation is $150.00 × 9% = $13.50 tax, for $163.50 due each monthly period. Reconfirm the retail license is active, the delivery location, and the current rate before issuing; this is a manual tax amount, not automatic tax determination.
 
-Suggested invoice description, subject to the agreed tax-inclusive/exclusive price:
+Suggested invoice description:
 
 > Website hosting, deployment oversight, monitoring, routine maintenance, reasonable fixes, and up to one hour of basic picture or text changes — monthly service beginning October 7, 2026. Renews monthly on the 7th. Monthly service is billed in full and is not prorated for a partial month.
 
@@ -30,7 +30,7 @@ For each invoice, show the service subtotal, approved sales-tax amount, and tota
 
 1. Confirm the retail license is active before collecting tax.
 2. Confirm the customer location and current tax rate using SCDOR's official address lookup/rate table.
-3. Confirm whether the written $150 price is tax-inclusive or tax-exclusive; do not assume.
+3. Use the owner's confirmed tax-exclusive price: $150.00 service + $13.50 tax at the 9% reference rate = $163.50; recheck the current rate and license before sending.
 4. Enter only the approved tax amount in PBA Books' manual tax field. PBA Books does not calculate a rate or file returns.
 5. Check the customer-facing Stripe invoice/receipt and the ledger posting. Tax recorded in Books is credited to Sales Tax Payable; it is a liability, not service revenue.
 6. Track filing frequency, collected tax, and remittance in the appropriate SCDOR account. Consult SCDOR or a qualified tax professional for licensing, sourcing, filing, and treatment questions.
