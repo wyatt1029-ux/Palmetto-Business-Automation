@@ -180,7 +180,9 @@ async function createInvoice(sql, env, actor, data) {
   if (recurring && (!Number.isInteger(billingDay) || billingDay < 1 || billingDay > 28)) {
     throw Object.assign(new Error("Choose a monthly billing day from 1 to 28."), { status: 422 });
   }
-  const memo = String(data.memo || "").trim().slice(0, 2_000) || lines.map((line) => line.description).join(" · ").slice(0, 2_000);
+  const memo = String(data.memo || "").trim()
+    ? requiredText(data.memo, "Invoice memo", 500)
+    : lines.map((line) => line.description).join(" · ").slice(0, 500);
   const invoiceFooter = String(data.invoiceFooter || "").trim().slice(0, 2_000) || null;
   const customFields = Array.isArray(data.customFields) ? data.customFields.slice(0, 4).map((field) => ({
     name: requiredText(field.name, "Custom field name", 40),
@@ -298,7 +300,7 @@ export async function createStripeCollection(sql, env, actor, invoiceId) {
   const metadata = {
     "metadata[accounting_invoice_id]": invoice.id,
     "metadata[customer_number]": invoice.customer_number,
-    "metadata[project_title]": invoice.memo || invoice.invoice_number,
+    "metadata[project_title]": (invoice.memo || invoice.invoice_number).slice(0, 500),
     "metadata[payment_label]": `${invoice.invoice_number} · PBA professional services`,
     "metadata[payment_terms_summary]": invoice.payment_terms || "Due on receipt",
   };
@@ -364,7 +366,7 @@ export async function updateInvoiceDetails(sql, env, actor, invoiceId, data) {
   if (!data || typeof data.memo !== "string") {
     throw Object.assign(new Error("Invoice memo is required."), { status: 422 });
   }
-  const memo = requiredText(data.memo, "Invoice memo", 2_000).replace(/\r\n/g, "\n");
+  const memo = requiredText(data.memo, "Invoice memo", 500).replace(/\r\n/g, "\n");
   if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(memo)) {
     throw Object.assign(new Error("Invoice memo contains unsupported characters."), { status: 422 });
   }

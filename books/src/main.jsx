@@ -494,7 +494,7 @@ function Sales({ customers, reloadCustomers }) {
         {selectedInvoice && <form className="form-grid" onSubmit={saveInvoiceDetails}>
           <p className="full form-help">{selectedInvoice.customer_name} · {money(selectedInvoice.total_cents)} total · {selectedInvoice.customer_email}</p>
           <label className="full"><span>Due date</span><input type="date" name="dueDate" defaultValue={String(selectedInvoice.due_date).slice(0, 10)} min={today} required /></label>
-          <label className="full"><span>Memo for the customer</span><textarea name="memo" rows="11" maxLength="2000" defaultValue={selectedInvoice.memo || ""} required /></label>
+          <label className="full"><span>Memo for the customer (500 characters maximum)</span><textarea name="memo" rows="11" maxLength="500" defaultValue={selectedInvoice.memo || ""} required /></label>
           <button className="button button-primary full" disabled={working}>{working ? "Saving…" : "Save memo and due date"}</button>
         </form>}
       </Modal>
@@ -545,7 +545,7 @@ function Sales({ customers, reloadCustomers }) {
           <label><span>Issue date</span><input type="date" name="issueDate" defaultValue={today} required /></label>
           <label><span>Due date</span><input type="date" name="dueDate" defaultValue={today} required /></label>
           <label className="full"><span>Payment terms</span><input name="paymentTerms" defaultValue="Due on receipt" required /></label>
-          <label className="full"><span>Memo for the customer</span><textarea name="memo" rows="3" placeholder="Thank you for partnering with PBA." /></label>
+          <label className="full"><span>Memo for the customer (500 characters maximum)</span><textarea name="memo" rows="3" maxLength="500" placeholder="Thank you for partnering with PBA." /></label>
           <label className="full"><span>Footer / legal note</span><textarea name="invoiceFooter" rows="2" placeholder="Payment is due according to the terms above." /></label>
           <div className="full"><span>Custom fields <small>Optional · up to four</small></span>{[0, 1, 2, 3].map((index) => <div className="custom-field-row" key={index}><input name={`customName${index}`} placeholder={index === 0 ? "Customer number" : "Label"} /><input name={`customValue${index}`} placeholder={index === 0 ? "PBA-2026-001001" : "Value"} /></div>)}</div>
           <label className="check-label full"><input type="checkbox" name="recurring" checked={recurringEnabled} onChange={(event) => setRecurringEnabled(event.target.checked)} /><span><strong>Monthly automatic payment</strong><small>After the first invoice is paid, PBA Books can create a separate card-authorization link. Monthly automatic charges start on the selected day.</small></span></label>

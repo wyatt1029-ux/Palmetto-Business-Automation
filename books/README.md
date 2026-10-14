@@ -128,3 +128,7 @@ Worker bindings, not repository files. Review the chart of accounts before relyi
 financial reports, and obtain owner approval before future production migrations, live
 Stripe sessions, or a bank connection. The owner confirmed the opening balance is zero;
 do not fabricate an opening-balance entry.
+
+Stripe caps the customer-facing invoice memo at 500 characters. PBA Books enforces that
+limit for new invoices and edits to open invoices; use a separate scope document when
+longer service terms or exclusions must accompany an invoice.

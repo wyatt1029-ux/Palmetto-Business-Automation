@@ -91,5 +91,5 @@ test("rejects a mismatched Stripe invoice before updating either system", async 
 
 test("rejects invalid due dates and overlong memos", async () => {
   await assert.rejects(exercise({ data: { memo: "Updated", dueDate: "2026-02-30" } }), /due date is invalid/i);
-  await assert.rejects(exercise({ data: { memo: "x".repeat(2001), dueDate: "2026-10-16" } }), /too long/);
+  await assert.rejects(exercise({ data: { memo: "x".repeat(501), dueDate: "2026-10-16" } }), /too long/);
 });
