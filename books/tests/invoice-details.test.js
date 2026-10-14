@@ -106,6 +106,7 @@ test("reconnects a matching Stripe revision without posting a second receivable 
     data: { memo, dueDate: "2026-10-16" },
   });
   assert.equal(result.memo, memo);
+  assert.equal(result.revisionConnected, true);
   assert.deepEqual(requests.map(({ method, path }) => `${method} ${path}`), [
     "GET /v1/invoices/in_demo", "GET /v1/invoices/in_revision",
   ]);

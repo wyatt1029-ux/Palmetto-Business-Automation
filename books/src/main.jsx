@@ -418,12 +418,14 @@ function Sales({ customers, reloadCustomers }) {
     event.preventDefault(); setWorking(true); setError("");
     try {
       const form = new FormData(event.currentTarget);
-      await api(`/api/invoices/${selectedInvoice.id}`, { method: "PATCH", body: JSON.stringify({
+      const result = await api(`/api/invoices/${selectedInvoice.id}`, { method: "PATCH", body: JSON.stringify({
         memo: form.get("memo"),
         dueDate: form.get("dueDate"),
       }) });
       setModal(""); setSelectedInvoice(null);
-      setNotice("Invoice memo and due date updated in PBA Books and Stripe. The customer has not been emailed again.");
+      setNotice(result.invoice.revisionConnected
+        ? "The Stripe revision is linked to this PBA Books record. Saving here did not send another email or post a second receivable."
+        : "Invoice details verified in PBA Books and Stripe. Saving here did not email the customer.");
       invoices.reload();
     } catch (requestError) { setError(requestError.message); }
     finally { setWorking(false); }

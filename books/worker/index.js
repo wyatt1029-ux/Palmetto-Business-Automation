@@ -428,7 +428,7 @@ export async function updateInvoiceDetails(sql, env, actor, invoiceId, data) {
       previousStripeInvoiceId: current.id, stripeInvoiceId: revision.id,
       previousDueDate: invoice.due_date, dueDate, previousMemo: invoice.memo, memo,
     });
-    return saved[0];
+    return { ...saved[0], revisionConnected: true };
   }
   if (current.status !== "open") {
     throw Object.assign(new Error("Stripe invoice is no longer open. Review it before editing."), { status: 409 });
