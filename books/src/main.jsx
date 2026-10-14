@@ -405,6 +405,9 @@ function Sales({ customers, reloadCustomers }) {
       const result = await api(`/api/invoices/${invoice.id}/collect`, { method: "POST" });
       setCheckoutUrl(result.invoiceUrl || "");
       setSetupUrl(result.setupUrl || "");
+      setNotice(result.alreadyPrepared
+        ? `Stripe invoice link is ready for ${invoice.customer_name}.`
+        : `Invoice sent through Stripe to ${invoice.customer_email || "the customer billing email"}.`);
       setModal("payment-link");
     } catch (requestError) { setError(requestError.message); }
     finally { setWorking(false); }
@@ -458,7 +461,7 @@ function Sales({ customers, reloadCustomers }) {
                   <span>{invoice.recurring && balance === 0 && !invoice.payment_method_setup_at
                     ? <button className="mini-button" onClick={() => setupRecurring(invoice)} disabled={working}>{invoice.setup_link_ready ? "Copy setup link" : "Set up autopay"}</button>
                     : balance > 0
-                      ? <button className="mini-button" onClick={() => collect(invoice)} disabled={working}>{invoice.stripe_invoice_id ? "Open payment link" : "Send invoice"}</button>
+                      ? <button className="mini-button" aria-label={`${invoice.stripe_invoice_id ? "Open payment link" : "Send invoice"} for ${invoice.customer_name}`} title={invoice.stripe_invoice_id ? "Open the existing Stripe invoice link" : "Send this invoice by email through Stripe"} onClick={() => collect(invoice)} disabled={working}>{invoice.stripe_invoice_id ? "Open payment link" : "Send invoice"}</button>
                       : invoice.recurring ? "Autopay ready" : "—"}</span>
                 </div>
               );

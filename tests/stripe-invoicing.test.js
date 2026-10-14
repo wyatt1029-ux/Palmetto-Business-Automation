@@ -22,11 +22,12 @@ test("invoice webhooks update the approved SOW", async () => {
 
 test("PBA sends one-time invoices through Stripe after finalization", async () => {
   const source = await readFile(new URL("../books/worker/index.js", import.meta.url), "utf8");
+  assert.match(source, /encodeURIComponent\(draft\.id\).*\/finalize/);
   assert.match(source, /encodeURIComponent\(draft\.id\).*\/send/);
   assert.match(source, /custom_fields/);
   assert.match(source, /accounting_invoice_lines/);
   assert.match(source, /description: "Sales tax"/);
-  assert.match(source, /stripeInvoice\.status === "draft"/);
+  assert.doesNotMatch(source, /stripeInvoice\.status === "draft"/);
 });
 
 test("SOW builder provides billing-specific payment defaults without replacing owner edits", async () => {
