@@ -132,3 +132,8 @@ do not fabricate an opening-balance entry.
 Stripe caps the customer-facing invoice memo at 500 characters. PBA Books enforces that
 limit for new invoices and edits to open invoices; use a separate scope document when
 longer service terms or exclusions must accompany an invoice.
+For a finalized invoice's due-date correction, Stripe requires a revision. Finalizing
+the revision voids the original invoice and gives the customer a new payment link.
+After confirming the revision is open, unpaid, and otherwise identical, use Edit details
+in PBA Books with the revision's exact memo and due date to reconnect the existing
+accounting record. This does not create a second receivable or send customer email.

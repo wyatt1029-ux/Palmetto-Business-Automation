@@ -489,7 +489,7 @@ function Sales({ customers, reloadCustomers }) {
           </div>
         ) : <Empty title="No invoices yet" copy="Sync an approved SOW or create your first customer invoice." action={<button className="button button-primary" onClick={() => { setRecurringEnabled(false); setModal("invoice"); }}>Create invoice</button>} />}
       </section>
-      <Modal open={modal === "edit-invoice"} title={`Edit ${selectedInvoice?.invoice_number || "invoice"}`} copy="Update the customer memo and due date on this unpaid invoice. The amount and payment link will stay the same. Saving does not email the customer again." onClose={() => { setModal(""); setSelectedInvoice(null); }}>
+      <Modal open={modal === "edit-invoice"} title={`Edit ${selectedInvoice?.invoice_number || "invoice"}`} copy="You can change the memo on an unpaid Stripe invoice. To change its due date, first revise and finalize it in Stripe, then save the matching memo and date here to reconnect PBA Books. Saving never emails the customer." onClose={() => { setModal(""); setSelectedInvoice(null); }}>
         <Notice message={error} tone="error" onClose={() => setError("")} />
         {selectedInvoice && <form className="form-grid" onSubmit={saveInvoiceDetails}>
           <p className="full form-help">{selectedInvoice.customer_name} · {money(selectedInvoice.total_cents)} total · {selectedInvoice.customer_email}</p>

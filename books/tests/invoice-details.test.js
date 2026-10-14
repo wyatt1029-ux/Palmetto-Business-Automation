@@ -27,7 +27,7 @@ const stripeInvoice = () => ({
   metadata: { accounting_invoice_id: "invoice-1" },
 });
 
-async function exercise({ local = baseInvoice(), remote = stripeInvoice(), data = { memo: "Updated scope and exclusions", dueDate: "2026-10-16" } } = {}) {
+async function exercise({ local = baseInvoice(), remote = stripeInvoice(), revision = null, data = { memo: "Updated scope and exclusions", dueDate: "2026-10-15" } } = {}) {
   const queries = [];
   const requests = [];
   const originalFetch = globalThis.fetch;
@@ -37,11 +37,11 @@ async function exercise({ local = baseInvoice(), remote = stripeInvoice(), data 
     const path = new URL(url).pathname;
     const form = options.body ? Object.fromEntries(options.body.entries()) : null;
     requests.push({ path, method: options.method || "GET", form });
+    if (path === "/v1/invoices/in_revision" && revision) return Response.json(revision);
     if (path !== "/v1/invoices/in_demo") throw new Error(`Unexpected Stripe path ${path}`);
     return Response.json(options.method === "POST" ? {
       ...remote,
       description: form.description,
-      due_date: Number(form.due_date),
       metadata: { ...remote.metadata, project_title: form["metadata[project_title]"] },
     } : remote);
   };
@@ -72,8 +72,8 @@ test("updates an unpaid invoice in Stripe and PBA Books without changing its amo
   ]);
   const form = requests[1].form;
   assert.equal(form.description, "Updated scope and exclusions");
-  assert.equal(form.due_date, String(Date.parse("2026-10-16T19:23:00Z") / 1000));
-  assert.equal(form["metadata[payment_terms_summary]"], "Due October 16, 2026");
+  assert.ok(!("due_date" in form));
+  assert.equal(form["metadata[payment_terms_summary]"], "Due October 15, 2026");
   assert.ok(!("amount" in form) && !("customer" in form));
   assert.ok(queries.some(({ query }) => query.includes("update accounting_invoices")));
   assert.ok(queries.some(({ query }) => query.includes("insert into accounting_audit_events")));
@@ -87,6 +87,43 @@ test("rejects a paid invoice before contacting Stripe", async () => {
 test("rejects a mismatched Stripe invoice before updating either system", async () => {
   await assert.rejects(exercise({ remote: { ...stripeInvoice(), total: 9999 } }),
     /no longer matches PBA Books/);
+});
+
+test("requires a Stripe revision to change the due date of a finalized invoice", async () => {
+  await assert.rejects(exercise({ data: { memo: "Updated", dueDate: "2026-10-16" } }),
+    /Create and finalize a revision/);
+});
+
+test("reconnects a matching Stripe revision without posting a second receivable or sending", async () => {
+  const memo = "Updated scope and exclusions";
+  const { result, requests, queries } = await exercise({
+    remote: { ...stripeInvoice(), status: "void", latest_revision: "in_revision" },
+    revision: {
+      ...stripeInvoice(), id: "in_revision", status: "open", description: memo,
+      due_date: Date.parse("2026-10-16T19:23:00Z") / 1000,
+      from_invoice: { action: "revision", invoice: "in_demo" },
+    },
+    data: { memo, dueDate: "2026-10-16" },
+  });
+  assert.equal(result.memo, memo);
+  assert.deepEqual(requests.map(({ method, path }) => `${method} ${path}`), [
+    "GET /v1/invoices/in_demo", "GET /v1/invoices/in_revision",
+  ]);
+  assert.ok(queries.some(({ query, values }) => query.includes("set stripe_invoice_id") && values.includes("in_revision")));
+  assert.ok(queries.some(({ query }) => query.includes("insert into accounting_audit_events")));
+  assert.ok(!queries.some(({ query }) => query.includes("insert into accounting_journal_entries")));
+});
+
+test("refuses a Stripe revision with a changed total", async () => {
+  await assert.rejects(exercise({
+    remote: { ...stripeInvoice(), status: "void", latest_revision: "in_revision" },
+    revision: {
+      ...stripeInvoice(), id: "in_revision", status: "open", total: 17000,
+      due_date: Date.parse("2026-10-16T19:23:00Z") / 1000,
+      from_invoice: { action: "revision", invoice: "in_demo" },
+    },
+    data: { memo: "Updated scope and exclusions", dueDate: "2026-10-16" },
+  }), /revision does not match/i);
 });
 
 test("rejects invalid due dates and overlong memos", async () => {

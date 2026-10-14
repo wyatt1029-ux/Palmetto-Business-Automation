@@ -388,11 +388,50 @@ export async function updateInvoiceDetails(sql, env, actor, invoiceId, data) {
   }
   const stripePath = `/invoices/${encodeURIComponent(invoice.stripe_invoice_id)}`;
   const current = await stripeGet(env, stripePath);
-  if (current.status !== "open" || current.collection_method !== "send_invoice" ||
+  if (current.collection_method !== "send_invoice" ||
       current.metadata?.accounting_invoice_id !== invoice.id ||
       current.customer !== invoice.stripe_customer_id ||
       Number(current.total) !== Number(invoice.total_cents) || Number(current.amount_paid) !== 0) {
     throw Object.assign(new Error("Stripe invoice no longer matches PBA Books. Review it before editing."), { status: 409 });
+  }
+  if (current.status === "void" && current.latest_revision) {
+    const revision = await stripeGet(env, `/invoices/${encodeURIComponent(current.latest_revision)}`);
+    if (!Number.isFinite(Number(revision.due_date))) {
+      throw Object.assign(new Error("Stripe revision has no valid due date."), { status: 409 });
+    }
+    const revisionDay = new Intl.DateTimeFormat("en-CA", {
+      year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/New_York",
+    }).formatToParts(new Date(Number(revision.due_date) * 1000));
+    const datePart = (type) => revisionDay.find((part) => part.type === type)?.value;
+    const revisionDueDate = `${datePart("year")}-${datePart("month")}-${datePart("day")}`;
+    if (revision.from_invoice?.action !== "revision" || revision.from_invoice?.invoice !== current.id ||
+        revision.status !== "open" || revision.collection_method !== "send_invoice" ||
+        revision.metadata?.accounting_invoice_id !== invoice.id ||
+        revision.customer !== invoice.stripe_customer_id ||
+        Number(revision.total) !== Number(invoice.total_cents) || Number(revision.amount_paid) !== 0 ||
+        revision.description !== memo || revisionDueDate !== dueDate) {
+      throw Object.assign(new Error("Stripe revision does not match these invoice details. Review it before reconnecting PBA Books."), { status: 409 });
+    }
+    const paymentTerms = `Due ${new Intl.DateTimeFormat("en-US", {
+      month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
+    }).format(new Date(`${dueDate}T12:00:00Z`))}`;
+    const saved = await sql`
+      update accounting_invoices
+      set stripe_invoice_id = ${revision.id}, memo = ${memo}, due_date = ${dueDate},
+          payment_terms = ${paymentTerms}, updated_at = now()
+      where id = ${invoiceId} and company_id = ${companyId(env)} and status = 'open'
+        and amount_paid_cents = 0 and stripe_invoice_id = ${invoice.stripe_invoice_id}
+      returning id, invoice_number, memo, due_date, total_cents
+    `;
+    if (!saved.length) throw Object.assign(new Error("PBA Books could not reconnect the Stripe revision. Retry before sending."), { status: 409 });
+    await writeAudit(sql, env, actor, "invoice.revision_connected", "invoice", invoiceId, {
+      previousStripeInvoiceId: current.id, stripeInvoiceId: revision.id,
+      previousDueDate: invoice.due_date, dueDate, previousMemo: invoice.memo, memo,
+    });
+    return saved[0];
+  }
+  if (current.status !== "open") {
+    throw Object.assign(new Error("Stripe invoice is no longer open. Review it before editing."), { status: 409 });
   }
   const previousDue = new Date(Number(current.due_date) * 1000);
   if (!Number.isFinite(previousDue.getTime())) {
@@ -402,6 +441,9 @@ export async function updateInvoiceDetails(sql, env, actor, invoiceId, data) {
   if (!Number.isSafeInteger(dueTimestamp) || dueTimestamp * 1000 <= Date.now()) {
     throw Object.assign(new Error("Choose a future invoice due date."), { status: 422 });
   }
+  if (Number(current.due_date) !== dueTimestamp) {
+    throw Object.assign(new Error("Stripe cannot change this finalized invoice's due date. Create and finalize a revision in Stripe, then save its details here to reconnect PBA Books."), { status: 409 });
+  }
   const paymentTerms = `Due ${new Intl.DateTimeFormat("en-US", {
     month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
   }).format(new Date(`${dueDate}T12:00:00Z`))}`;
@@ -409,7 +451,6 @@ export async function updateInvoiceDetails(sql, env, actor, invoiceId, data) {
     ? current
     : await stripeForm(env, stripePath, formBody({
       description: memo,
-      due_date: dueTimestamp,
       "metadata[project_title]": memo.slice(0, 500),
       "metadata[payment_terms_summary]": paymentTerms,
     }));
