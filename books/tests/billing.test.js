@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { invoiceDaysUntilDue, missingInvoiceItems, nextMonthlyAnchor, recurringStripeItems, recurringSubscriptionFields } from "../worker/billing.js";
+import { invoiceDaysUntilDue, missingInvoiceItems, monthlyInvoiceSubscriptionFields, nextMonthlyAnchor, recurringStripeItems, recurringSubscriptionFields } from "../worker/billing.js";
 
 test("invoice due days accepts both date-only and Neon timestamp values", () => {
   const now = new Date("2026-10-14T19:00:00.000Z");
@@ -75,4 +75,33 @@ test("subscription fields bill the next selected day with no proration and separ
   assert.equal(result.fields["items[0][price_data][unit_amount]"], 15000);
   assert.equal(result.fields["items[1][price_data][unit_amount]"], 1350);
   assert.equal(result.fields["items[1][price_data][product_data][name]"], "Sales tax");
+});
+
+test("first monthly invoice charges the initial period and anchors later renewals", () => {
+  const { anchor, fields } = monthlyInvoiceSubscriptionFields({
+    customerId: "cus_test", invoiceId: "invoice_test", customerNumber: "PBA-TEST",
+    billingDay: 7, dueDays: 2, now: new Date("2026-10-14T14:00:00.000Z"),
+    subtotalCents: 15000, taxCents: 1350,
+    serviceProductId: "prod_service", taxProductId: "prod_tax",
+  });
+  assert.equal(anchor.date, "2026-11-07");
+  assert.equal(fields.collection_method, "send_invoice");
+  assert.equal(fields.billing_cycle_anchor, anchor.timestamp);
+  assert.equal(fields.proration_behavior, "none");
+  assert.equal(fields["payment_settings[save_default_payment_method]"], "on_subscription");
+  assert.equal(fields["items[0][price_data][unit_amount]"], 15000);
+  assert.equal(fields["items[1][price_data][unit_amount]"], 1350);
+  assert.equal(fields["add_invoice_items[0][price_data][unit_amount]"], 15000);
+  assert.equal(fields["add_invoice_items[1][price_data][unit_amount]"], 1350);
+});
+
+test("monthly invoice fields omit a zero-tax line and reject invalid amounts", () => {
+  const input = {
+    customerId: "cus_test", invoiceId: "invoice_test", customerNumber: "PBA-TEST",
+    billingDay: 7, dueDays: 2, subtotalCents: 15000, taxCents: 0,
+    serviceProductId: "prod_service",
+  };
+  assert.equal(monthlyInvoiceSubscriptionFields(input).fields["items[1][price_data][unit_amount]"], undefined);
+  assert.throws(() => monthlyInvoiceSubscriptionFields({ ...input, subtotalCents: 0 }), /amounts are invalid/);
+  assert.throws(() => monthlyInvoiceSubscriptionFields({ ...input, dueDays: -1 }), /due days are invalid/);
 });

@@ -37,6 +37,16 @@ DEV_OWNER_EMAIL=...
 
 The production Worker rejects the bypass.
 
+For the monthly-billing end-to-end smoke test, use only the **Palmetto Business Automation
+sandbox** Stripe test key (account `acct_1Tz2RYH1zz06h42p`) and the separate **PBA Preview** Neon
+database. The test script checks both identities before creating a synthetic customer, invoice,
+test-card payment, and signed webhook. It checks payment recording, duplicate-webhook handling,
+saved-card autopay activation, and schedules its synthetic subscription to cancel before the
+first renewal. Run `PBA_BOOKS_SANDBOX_SMOKE=yes node scripts/smoke-monthly-sandbox.mjs` with
+`STRIPE_SECRET_KEY` and `DATABASE_URL` supplied in the process environment. Do not save either
+credential in the OneDrive-synced repository or use a live Stripe key. This smoke test does not
+send or charge any real customer.
+
 ## Neon setup
 
 Apply `migrations/0001_accounting.sql`, `migrations/0002_invoice_customization.sql`, and `migrations/0003_recurring_billing_schedule.sql` after the existing root `schema.sql`. Use a separate Neon
@@ -46,15 +56,18 @@ document metadata, import history, audit events, and the invoice memo, footer, a
 storage used when PBA sends invoices through Stripe. The recurring billing migration stores a
 monthly anchor day and the Stripe payment-method setup state; it is additive and safe to rerun.
 
-For a recurring invoice, PBA Books first emails the initial service-period invoice. Once that
-invoice is paid, the owner can create a secure Stripe setup link for the customer to authorize
-future automatic payments. The recurring Stripe subscription begins on the selected day of the
-next month, without prorating the initial service period; its monthly service and manually entered
-tax appear as separate recurring invoice lines. Share the setup link with the customer and confirm
-the payment-method setup status before relying on automatic collection. The tax amount is fixed
-from the amount entered; PBA Books does not calculate future tax changes. Verify the applicable
-rate and update the billing arrangement when needed. Setup links expire; PBA Books can create a
-replacement link if the customer has not completed setup before expiration.
+For a new invoice, choose **One-time invoice** or **Monthly automatic billing** in the invoice
+form. Monthly billing accepts one service line, a manually entered tax amount, and a renewal day.
+The Send invoice action creates a Stripe subscription with an initial service-period invoice and
+future monthly prices, then emails that first invoice. The first invoice is due before the next
+renewal day. Stripe is asked to save the payment method used for that invoice; after Stripe confirms
+the first payment and a saved method, the webhook switches the subscription to automatic collection.
+If Stripe cannot save a method, Books leaves autopay pending and offers a separate setup link as a
+fallback. Confirm the invoice shows monthly autopay as **active** before relying on automatic collection. Legacy recurring
+invoices already sent as standalone Stripe invoices retain their original two-step setup flow;
+the new form choice does not alter or resend them. The monthly tax amount is fixed from the amount
+entered; PBA Books does not calculate future tax changes. Verify the applicable rate and update
+the billing arrangement when needed.
 
 For a sent, open invoice with no payment, **Edit details** updates only the customer memo and due
 date in both PBA Books and the existing Stripe invoice. It keeps the original invoice number,
