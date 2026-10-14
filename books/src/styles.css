@@ -173,7 +173,8 @@ h2 { margin-bottom: 0; font-size: 1.23rem; letter-spacing: -.025em; }
 .table-row > b { text-align: right; }
 .row-actions { display: flex; gap: 5px; align-items: center; }
 .table-head { min-height: 40px; color: var(--muted); background: #f6f6f1; text-transform: uppercase; letter-spacing: .08em; font-size: .57rem; font-weight: 800; }
-.invoices-table .table-row { grid-template-columns: 150px minmax(190px, 1.5fr) 120px 100px 110px 110px; }
+.invoices-table .table-row { grid-template-columns: 150px minmax(190px, 1.5fr) 120px 100px 110px 185px; }
+.invoices-table .row-actions { flex-wrap: wrap; }
 .expenses-table .table-row { grid-template-columns: 110px minmax(210px, 1.5fr) minmax(150px, 1fr) 100px 110px 95px; }
 
 .modal-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(7,25,21,.68); backdrop-filter: blur(7px); }

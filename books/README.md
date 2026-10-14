@@ -56,6 +56,12 @@ from the amount entered; PBA Books does not calculate future tax changes. Verify
 rate and update the billing arrangement when needed. Setup links expire; PBA Books can create a
 replacement link if the customer has not completed setup before expiration.
 
+For a sent, open invoice with no payment, **Edit details** updates only the customer memo and due
+date in both PBA Books and the existing Stripe invoice. It keeps the original invoice number,
+amount, and payment link; it does not void or resend the invoice. Recheck the Stripe payment page
+before using Stripe's separate **Resend invoice** action. Do not use Stripe's general **Edit
+invoice** action for this purpose: finalizing its replacement draft voids the original invoice.
+
 The owner confirmed on October 13, 2026 that there is no opening balance to enter. Do not create
 a nonzero opening-balance journal entry. Review the chart of accounts against the December 31,
 2025 statement and existing books before production use.

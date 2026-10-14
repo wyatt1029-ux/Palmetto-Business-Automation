@@ -360,6 +360,81 @@ export async function createStripeCollection(sql, env, actor, invoiceId) {
   return { invoiceUrl: stripeInvoice.hosted_invoice_url, setupUrl: null };
 }
 
+export async function updateInvoiceDetails(sql, env, actor, invoiceId, data) {
+  if (!data || typeof data.memo !== "string") {
+    throw Object.assign(new Error("Invoice memo is required."), { status: 422 });
+  }
+  const memo = requiredText(data.memo, "Invoice memo", 2_000).replace(/\r\n/g, "\n");
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(memo)) {
+    throw Object.assign(new Error("Invoice memo contains unsupported characters."), { status: 422 });
+  }
+  const dueDate = isoDate(data.dueDate, "Due date");
+  invoiceDaysUntilDue(dueDate, new Date(Date.now()));
+  const rows = await sql`
+    select i.*, c.stripe_customer_id
+    from accounting_invoices i join accounting_customers c on c.id = i.customer_id
+    where i.id = ${invoiceId} and i.company_id = ${companyId(env)}
+  `;
+  if (!rows.length) throw Object.assign(new Error("Invoice not found."), { status: 404 });
+  const invoice = rows[0];
+  const issueDate = invoice.issue_date instanceof Date
+    ? invoice.issue_date.toISOString().slice(0, 10)
+    : String(invoice.issue_date).slice(0, 10);
+  if (dueDate < issueDate) throw Object.assign(new Error("Due date cannot precede issue date."), { status: 422 });
+  if (invoice.status !== "open" || Number(invoice.amount_paid_cents) !== 0 || !invoice.stripe_invoice_id) {
+    throw Object.assign(new Error("Only an unpaid, sent, open invoice can have its memo and due date updated."), { status: 409 });
+  }
+  const stripePath = `/invoices/${encodeURIComponent(invoice.stripe_invoice_id)}`;
+  const current = await stripeGet(env, stripePath);
+  if (current.status !== "open" || current.collection_method !== "send_invoice" ||
+      current.metadata?.accounting_invoice_id !== invoice.id ||
+      current.customer !== invoice.stripe_customer_id ||
+      Number(current.total) !== Number(invoice.total_cents) || Number(current.amount_paid) !== 0) {
+    throw Object.assign(new Error("Stripe invoice no longer matches PBA Books. Review it before editing."), { status: 409 });
+  }
+  const previousDue = new Date(Number(current.due_date) * 1000);
+  if (!Number.isFinite(previousDue.getTime())) {
+    throw Object.assign(new Error("Stripe invoice due date is unavailable."), { status: 409 });
+  }
+  const dueTimestamp = Math.floor(Date.parse(`${dueDate}T${previousDue.toISOString().slice(11, 19)}Z`) / 1000);
+  if (!Number.isSafeInteger(dueTimestamp) || dueTimestamp * 1000 <= Date.now()) {
+    throw Object.assign(new Error("Choose a future invoice due date."), { status: 422 });
+  }
+  const paymentTerms = `Due ${new Intl.DateTimeFormat("en-US", {
+    month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
+  }).format(new Date(`${dueDate}T12:00:00Z`))}`;
+  const updated = current.description === memo && Number(current.due_date) === dueTimestamp
+    ? current
+    : await stripeForm(env, stripePath, formBody({
+      description: memo,
+      due_date: dueTimestamp,
+      "metadata[project_title]": memo.slice(0, 500),
+      "metadata[payment_terms_summary]": paymentTerms,
+    }));
+  if (updated.status !== "open" || updated.description !== memo ||
+      Number(updated.due_date) !== dueTimestamp || Number(updated.total) !== Number(invoice.total_cents)) {
+    throw Object.assign(new Error("Stripe did not confirm the invoice changes. PBA Books was not updated."), { status: 502 });
+  }
+  const saved = await sql`
+    update accounting_invoices
+    set memo = ${memo}, due_date = ${dueDate}, payment_terms = ${paymentTerms}, updated_at = now()
+    where id = ${invoiceId} and company_id = ${companyId(env)} and status = 'open'
+      and amount_paid_cents = 0 and stripe_invoice_id = ${invoice.stripe_invoice_id}
+    returning id, invoice_number, memo, due_date, total_cents
+  `;
+  if (!saved.length) {
+    throw Object.assign(new Error("Stripe was updated, but PBA Books could not save the change. Retry before resending."), { status: 409 });
+  }
+  await writeAudit(sql, env, actor, "invoice.details_updated", "invoice", invoiceId, {
+    stripeInvoiceId: invoice.stripe_invoice_id,
+    previousDueDate: invoice.due_date,
+    dueDate,
+    previousMemo: invoice.memo,
+    memo,
+  });
+  return saved[0];
+}
+
 async function createRecurringPaymentSetup(sql, env, actor, invoiceId) {
   const rows = await sql`
     select i.*, c.name customer_name, c.email customer_email, c.customer_number,
@@ -1285,9 +1360,10 @@ async function api(request, env, actor) {
   if (path === "/api/invoices" && method === "GET") {
     return json({ invoices: await sql`
       select i.id, i.invoice_number, i.issue_date, i.due_date, i.status, i.total_cents,
+        i.memo, i.payment_terms, i.stripe_invoice_id,
         i.amount_paid_cents, i.recurring, i.billing_day, i.payment_method_setup_at,
         (i.stripe_setup_checkout_url is not null and i.stripe_setup_checkout_expires_at > now()) setup_link_ready,
-        c.name customer_name, c.customer_number
+        c.name customer_name, c.customer_number, c.email customer_email
       from accounting_invoices i join accounting_customers c on c.id = i.customer_id
       where i.company_id = ${companyId(env)}
       order by i.issue_date desc, i.created_at desc limit 200
@@ -1295,6 +1371,10 @@ async function api(request, env, actor) {
   }
   if (path === "/api/invoices" && method === "POST") {
     return json({ invoice: await createInvoice(sql, env, actor.email, await bodyJson(request)) }, 201);
+  }
+  const editInvoiceId = routeId(path, /^\/api\/invoices\/([^/]+)$/);
+  if (editInvoiceId && method === "PATCH") {
+    return json({ invoice: await updateInvoiceDetails(sql, env, actor.email, editInvoiceId, await bodyJson(request)) });
   }
   const collectInvoiceId = routeId(path, /^\/api\/invoices\/([^/]+)\/collect$/);
   if (collectInvoiceId && method === "POST") {

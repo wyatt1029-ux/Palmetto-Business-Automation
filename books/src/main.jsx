@@ -356,6 +356,7 @@ function Sales({ customers, reloadCustomers }) {
   const [setupUrl, setSetupUrl] = useState("");
   const [recurringEnabled, setRecurringEnabled] = useState(false);
   const [invoiceLines, setInvoiceLines] = useState([{ description: "", quantity: "1", amount: "" }]);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const createInvoice = async (event) => {
     event.preventDefault(); setWorking(true); setError("");
@@ -413,6 +414,21 @@ function Sales({ customers, reloadCustomers }) {
     finally { setWorking(false); }
   };
 
+  const saveInvoiceDetails = async (event) => {
+    event.preventDefault(); setWorking(true); setError("");
+    try {
+      const form = new FormData(event.currentTarget);
+      await api(`/api/invoices/${selectedInvoice.id}`, { method: "PATCH", body: JSON.stringify({
+        memo: form.get("memo"),
+        dueDate: form.get("dueDate"),
+      }) });
+      setModal(""); setSelectedInvoice(null);
+      setNotice("Invoice memo and due date updated in PBA Books and Stripe. The customer has not been emailed again.");
+      invoices.reload();
+    } catch (requestError) { setError(requestError.message); }
+    finally { setWorking(false); }
+  };
+
   const setupRecurring = async (invoice) => {
     setWorking(true); setError("");
     try {
@@ -458,7 +474,9 @@ function Sales({ customers, reloadCustomers }) {
                   <span data-label="Due">{shortDate(invoice.due_date)}</span>
                   <span data-label="Status"><Status tone={invoice.status === "paid" ? "good" : "warn"}>{invoice.status}</Status></span>
                   <b data-label="Balance">{money(balance)}</b>
-                  <span>{invoice.recurring && balance === 0 && !invoice.billing_day
+                  <span className="row-actions">{invoice.status === "open" && balance === Number(invoice.total_cents) && invoice.stripe_invoice_id &&
+                    <button className="mini-button" type="button" onClick={() => { setSelectedInvoice(invoice); setModal("edit-invoice"); }} disabled={working}>Edit details</button>}
+                    {invoice.recurring && balance === 0 && !invoice.billing_day
                     ? "Billing day needed"
                     : invoice.recurring && balance === 0 && !invoice.payment_method_setup_at
                     ? <button className="mini-button" onClick={() => setupRecurring(invoice)} disabled={working}>{invoice.setup_link_ready ? "Copy setup link" : "Set up autopay"}</button>
@@ -471,6 +489,15 @@ function Sales({ customers, reloadCustomers }) {
           </div>
         ) : <Empty title="No invoices yet" copy="Sync an approved SOW or create your first customer invoice." action={<button className="button button-primary" onClick={() => { setRecurringEnabled(false); setModal("invoice"); }}>Create invoice</button>} />}
       </section>
+      <Modal open={modal === "edit-invoice"} title={`Edit ${selectedInvoice?.invoice_number || "invoice"}`} copy="Update the customer memo and due date on this unpaid invoice. The amount and payment link will stay the same. Saving does not email the customer again." onClose={() => { setModal(""); setSelectedInvoice(null); }}>
+        <Notice message={error} tone="error" onClose={() => setError("")} />
+        {selectedInvoice && <form className="form-grid" onSubmit={saveInvoiceDetails}>
+          <p className="full form-help">{selectedInvoice.customer_name} · {money(selectedInvoice.total_cents)} total · {selectedInvoice.customer_email}</p>
+          <label className="full"><span>Due date</span><input type="date" name="dueDate" defaultValue={String(selectedInvoice.due_date).slice(0, 10)} min={today} required /></label>
+          <label className="full"><span>Memo for the customer</span><textarea name="memo" rows="11" maxLength="2000" defaultValue={selectedInvoice.memo || ""} required /></label>
+          <button className="button button-primary full" disabled={working}>{working ? "Saving…" : "Save memo and due date"}</button>
+        </form>}
+      </Modal>
       <Modal open={modal === "customer"} title="Add a customer" copy="Use this for clients who did not begin with the online intake and SOW workflow." onClose={() => setModal("")}>
         <Notice message={error} tone="error" onClose={() => setError("")} />
         <form className="form-grid" onSubmit={addCustomer}>
