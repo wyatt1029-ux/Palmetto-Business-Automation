@@ -13,6 +13,7 @@ import {
 } from "./ledger.js";
 import { postJournal, reverseJournal } from "./journals.js";
 import { stripeForm, stripeGet, verifyStripeWebhook } from "./stripe.js";
+import { invoiceDaysUntilDue, missingInvoiceItems, monthlyInvoiceSubscriptionFields, nextMonthlyAnchor, recurringSubscriptionFields } from "./billing.js";
 
 const headers = {
   "content-type": "application/json; charset=utf-8",
@@ -58,6 +59,9 @@ const isoDate = (value, label = "Date") => {
   }
   return clean;
 };
+const storedDate = (value) => value instanceof Date
+  ? value.toISOString().slice(0, 10)
+  : String(value || "").slice(0, 10);
 const routeId = (path, pattern) => path.match(pattern)?.[1] || null;
 const formBody = (values) => {
   const form = new URLSearchParams();
@@ -174,7 +178,17 @@ async function createInvoice(sql, env, actor, data) {
   if (dueDate < issueDate) throw Object.assign(new Error("Due date cannot precede issue date."), { status: 422 });
   const tax = Number(data.taxCents || 0);
   if (!Number.isSafeInteger(tax) || tax < 0) throw Object.assign(new Error("Tax amount is invalid."), { status: 422 });
-  const memo = String(data.memo || "").trim().slice(0, 2_000) || lines.map((line) => line.description).join(" · ").slice(0, 2_000);
+  const recurring = Boolean(data.recurring);
+  const billingDay = recurring ? Number(data.billingDay) : null;
+  if (recurring && (!Number.isInteger(billingDay) || billingDay < 1 || billingDay > 28)) {
+    throw Object.assign(new Error("Choose a monthly billing day from 1 to 28."), { status: 422 });
+  }
+  if (recurring && lines.length !== 1) {
+    throw Object.assign(new Error("Monthly autopay needs one service line; add separate charges on a one-time invoice."), { status: 422 });
+  }
+  const memo = String(data.memo || "").trim()
+    ? requiredText(data.memo, "Invoice memo", 500)
+    : lines.map((line) => line.description).join(" · ").slice(0, 500);
   const invoiceFooter = String(data.invoiceFooter || "").trim().slice(0, 2_000) || null;
   const customFields = Array.isArray(data.customFields) ? data.customFields.slice(0, 4).map((field) => ({
     name: requiredText(field.name, "Custom field name", 40),
@@ -192,11 +206,11 @@ async function createInvoice(sql, env, actor, data) {
     sql`
       insert into accounting_invoices
         (id, company_id, customer_id, sow_version_id, invoice_number, issue_date, due_date,
-         status, subtotal_cents, tax_cents, payment_terms, memo, recurring)
+         status, subtotal_cents, tax_cents, payment_terms, memo, recurring, billing_day)
       values
         (${invoiceId}, ${companyId(env)}, ${customerId}, ${data.sowVersionId || null},
          ${invoiceNumber}, ${issueDate}, ${dueDate}, 'draft', ${amount}, ${tax},
-         ${data.paymentTerms || "Due on receipt"}, ${memo}, ${Boolean(data.recurring)})
+         ${data.paymentTerms || "Due on receipt"}, ${memo}, ${recurring}, ${billingDay})
     `,
     sql`
       update accounting_invoices
@@ -228,7 +242,112 @@ async function createInvoice(sql, env, actor, data) {
   return { id: invoiceId, invoiceNumber };
 }
 
-async function createStripeCollection(sql, env, actor, invoiceId) {
+async function createMonthlyStripeCollection(sql, env, actor, invoice, stripeCustomerId, daysUntilDue) {
+  const remaining = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
+  if (Number(invoice.amount_paid_cents) !== 0 || remaining !== Number(invoice.total_cents) ||
+      !Array.isArray(invoice.lines) || invoice.lines.length !== 1) {
+    throw Object.assign(new Error("Monthly autopay requires one unpaid service line. Review this invoice before sending."), { status: 409 });
+  }
+  if (storedDate(invoice.due_date) >= nextMonthlyAnchor(invoice.billing_day, new Date(Date.now())).date) {
+    throw Object.assign(new Error("The first invoice must be due before the next monthly billing date."), { status: 422 });
+  }
+  const subscriptions = await stripeGet(env, `/subscriptions?customer=${encodeURIComponent(stripeCustomerId)}&status=all&limit=100`);
+  if (subscriptions.has_more || !Array.isArray(subscriptions.data)) {
+    throw Object.assign(new Error("Stripe subscriptions need manual review before sending."), { status: 409 });
+  }
+  const existing = subscriptions.data.filter((item) => item.metadata?.accounting_invoice_id === invoice.id);
+  if (existing.length > 1) {
+    throw Object.assign(new Error("Stripe has multiple subscriptions for this invoice. Review them before sending."), { status: 409 });
+  }
+  let subscription = existing[0];
+  if (!subscription) {
+    const serviceProduct = await stripeForm(env, "/products", formBody({
+      name: invoice.lines[0].description.slice(0, 120),
+      description: (invoice.memo || invoice.invoice_number).slice(0, 500),
+      "metadata[accounting_invoice_id]": invoice.id,
+    }), `monthly-service-product:${invoice.id}`);
+    const taxProduct = Number(invoice.tax_cents) > 0 ? await stripeForm(env, "/products", formBody({
+      name: "Sales tax",
+      description: "Manually determined sales tax for this monthly service",
+      "metadata[accounting_invoice_id]": invoice.id,
+    }), `monthly-tax-product:${invoice.id}`) : null;
+    const { fields } = monthlyInvoiceSubscriptionFields({
+      customerId: stripeCustomerId,
+      invoiceId: invoice.id,
+      customerNumber: invoice.customer_number,
+      currency: invoice.currency,
+      billingDay: invoice.billing_day,
+      dueDays: daysUntilDue,
+      now: new Date(Date.now()),
+      subtotalCents: Number(invoice.subtotal_cents),
+      taxCents: Number(invoice.tax_cents),
+      serviceProductId: serviceProduct.id,
+      taxProductId: taxProduct?.id,
+    });
+    subscription = await stripeForm(env, "/subscriptions", formBody(fields), `monthly-first-invoice:${invoice.id}`);
+  }
+  const anchorSeconds = Number(subscription.billing_cycle_anchor);
+  const anchorDate = Number.isSafeInteger(anchorSeconds) && anchorSeconds > 0
+    ? new Date(anchorSeconds * 1000).toISOString().slice(0, 10) : null;
+  if (subscription.metadata?.accounting_invoice_id !== invoice.id || subscription.customer !== stripeCustomerId ||
+      subscription.collection_method !== "send_invoice" || !["active", "trialing"].includes(subscription.status) ||
+      !anchorDate || anchorDate <= new Date(Date.now()).toISOString().slice(0, 10)) {
+    throw Object.assign(new Error("The Stripe subscription needs manual review before sending."), { status: 409 });
+  }
+  const priorInvoices = await stripeGet(env, `/invoices?customer=${encodeURIComponent(stripeCustomerId)}&limit=100`);
+  if (priorInvoices.has_more || !Array.isArray(priorInvoices.data)) {
+    throw Object.assign(new Error("Stripe invoices need manual review before sending."), { status: 409 });
+  }
+  const matching = priorInvoices.data.filter((item) => item.metadata?.accounting_invoice_id === invoice.id && item.status !== "void");
+  if (matching.length > 1) {
+    throw Object.assign(new Error("Stripe has multiple first invoices for this subscription. Review them before sending."), { status: 409 });
+  }
+  const initial = matching[0] || await stripeForm(env, "/invoices", formBody({
+    customer: stripeCustomerId,
+    subscription: subscription.id,
+    collection_method: "send_invoice",
+    days_until_due: daysUntilDue,
+    description: invoice.memo || invoice.invoice_number,
+    "metadata[accounting_invoice_id]": invoice.id,
+    "metadata[customer_number]": invoice.customer_number,
+  }), `monthly-first-invoice-draft:${invoice.id}`);
+  const initialId = initial.id;
+  if (Number(initial.total) !== remaining || initial.customer !== stripeCustomerId ||
+      initial.parent?.subscription_details?.subscription !== subscription.id ||
+      !["draft", "open"].includes(initial.status)) {
+    throw Object.assign(new Error("Stripe's first monthly invoice does not match PBA Books. Nothing was emailed; review it in Stripe."), { status: 409 });
+  }
+  const monthlyDisclosure = `Monthly autopay: ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(remaining / 100)} (including the currently entered sales tax) will be charged on the ${invoice.billing_day}${Number(invoice.billing_day) === 1 ? "st" : Number(invoice.billing_day) === 2 ? "nd" : Number(invoice.billing_day) === 3 ? "rd" : "th"} of each month, beginning ${anchorDate}, until canceled. Contact PBA to change or cancel before the next billing date.`;
+  const footer = [invoice.invoice_footer, monthlyDisclosure].filter(Boolean).join("\n\n");
+  await stripeForm(env, `/invoices/${encodeURIComponent(initialId)}`, formBody({
+    description: invoice.memo || invoice.invoice_number,
+    footer,
+    "metadata[accounting_invoice_id]": invoice.id,
+    "metadata[customer_number]": invoice.customer_number,
+    "metadata[payment_terms_summary]": invoice.payment_terms || "Due on receipt",
+  }), `monthly-first-invoice-details:${initialId}`);
+  const finalized = initial.status === "draft"
+    ? await stripeForm(env, `/invoices/${encodeURIComponent(initialId)}/finalize`, formBody({}), `monthly-first-invoice-finalize:${initialId}`)
+    : initial;
+  if (Number(finalized.total) !== remaining || finalized.status !== "open") {
+    throw Object.assign(new Error("Stripe did not finalize the expected monthly invoice. Nothing was emailed."), { status: 409 });
+  }
+  const sent = await stripeForm(env, `/invoices/${encodeURIComponent(initialId)}/send`, formBody({}), `monthly-first-invoice-send:${initialId}`);
+  if (!sent.hosted_invoice_url || sent.status !== "open") {
+    throw Object.assign(new Error("Stripe did not confirm the monthly invoice email. Review it in Stripe."), { status: 502 });
+  }
+  await sql`
+    update accounting_invoices
+    set stripe_invoice_id = ${initialId}, stripe_subscription_id = ${subscription.id}, updated_at = now()
+    where id = ${invoice.id} and company_id = ${companyId(env)}
+  `;
+  await writeAudit(sql, env, actor, "invoice.monthly_collection_created", "invoice", invoice.id, {
+    stripeInvoiceId: initialId, stripeSubscriptionId: subscription.id, firstRenewalDate: anchorDate,
+  });
+  return { invoiceUrl: sent.hosted_invoice_url, setupUrl: null, monthly: true };
+}
+
+export async function createStripeCollection(sql, env, actor, invoiceId) {
   const rows = await sql`
     select i.*, c.name customer_name, c.email customer_email, c.customer_number, c.stripe_customer_id,
       coalesce((select json_agg(json_build_object(
@@ -243,6 +362,38 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
   `;
   if (!rows.length) throw Object.assign(new Error("Open invoice not found."), { status: 404 });
   const invoice = rows[0];
+  if (invoice.stripe_invoice_id) {
+    const existingInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(invoice.stripe_invoice_id)}`);
+    return { invoiceUrl: existingInvoice.hosted_invoice_url || null, setupUrl: null, alreadyPrepared: true };
+  }
+  const daysUntilDue = invoiceDaysUntilDue(invoice.due_date, new Date(Date.now()));
+  const remaining = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
+  if (!Number.isSafeInteger(remaining) || remaining <= 0) {
+    throw Object.assign(new Error("Invoice balance is invalid."), { status: 422 });
+  }
+  const amountPaid = Number(invoice.amount_paid_cents);
+  const invoiceLines = amountPaid > 0
+    ? [{ description: `Remaining balance for ${invoice.invoice_number}`, quantity: 1, amountCents: remaining }]
+    : [
+        ...(Array.isArray(invoice.lines) && invoice.lines.length ? invoice.lines : [{
+          description: invoice.memo || invoice.invoice_number,
+          quantity: 1,
+          amountCents: Number(invoice.subtotal_cents),
+        }]),
+        ...(Number(invoice.tax_cents) > 0 ? [{
+          description: "Sales tax",
+          quantity: 1,
+          amountCents: Number(invoice.tax_cents),
+        }] : []),
+      ];
+  const expectedItems = invoiceLines.map((line) => ({
+    amountCents: Number(line.amountCents),
+    description: Number(line.quantity) === 1 ? line.description : `${line.description} · Qty ${line.quantity}`,
+  }));
+  if (expectedItems.some((line) => !Number.isSafeInteger(line.amountCents) || line.amountCents <= 0) ||
+      expectedItems.reduce((sum, line) => sum + line.amountCents, 0) !== remaining) {
+    throw Object.assign(new Error("Invoice lines do not match the open balance."), { status: 422 });
+  }
   let stripeCustomerId = invoice.stripe_customer_id;
   if (!stripeCustomerId) {
     const customer = await stripeForm(env, "/customers", formBody({
@@ -256,76 +407,47 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
       where id = ${invoice.customer_id}
     `;
   }
-  const remaining = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
+  if (invoice.recurring) {
+    return createMonthlyStripeCollection(sql, env, actor, invoice, stripeCustomerId, daysUntilDue);
+  }
   const recurring = invoice.recurring;
   const metadata = {
     "metadata[accounting_invoice_id]": invoice.id,
     "metadata[customer_number]": invoice.customer_number,
-    "metadata[project_title]": invoice.memo || invoice.invoice_number,
+    "metadata[project_title]": (invoice.memo || invoice.invoice_number).slice(0, 500),
     "metadata[payment_label]": `${invoice.invoice_number} · PBA professional services`,
     "metadata[payment_terms_summary]": invoice.payment_terms || "Due on receipt",
   };
   let stripeInvoice;
-  let subscription = null;
-  if (recurring) {
-    subscription = await stripeForm(env, "/subscriptions", formBody({
-      customer: stripeCustomerId,
-      payment_behavior: "default_incomplete",
-      "payment_settings[save_default_payment_method]": "on_subscription",
-      "items[0][price_data][currency]": invoice.currency,
-      "items[0][price_data][unit_amount]": remaining,
-      "items[0][price_data][recurring][interval]": "month",
-      "items[0][price_data][product_data][name]": invoice.invoice_number,
-      "items[0][price_data][product_data][description]": invoice.memo || "PBA professional services",
-      ...metadata,
-    }), `invoice-subscription:${invoice.id}:${remaining}`);
-    const latestInvoiceId = typeof subscription.latest_invoice === "string"
-      ? subscription.latest_invoice
-      : subscription.latest_invoice?.id;
-    if (!latestInvoiceId) throw Object.assign(new Error("Stripe did not create the initial invoice."), { status: 502 });
-    stripeInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(latestInvoiceId)}`);
-    if (!stripeInvoice.hosted_invoice_url && stripeInvoice.status === "draft") {
-      stripeInvoice = await stripeForm(
-        env,
-        `/invoices/${encodeURIComponent(latestInvoiceId)}/finalize`,
-        formBody({}),
-        `invoice-finalize:${latestInvoiceId}`,
-      );
+  {
+    const priorInvoices = await stripeGet(env, `/invoices?customer=${encodeURIComponent(stripeCustomerId)}&limit=100`);
+    if (priorInvoices.has_more || !Array.isArray(priorInvoices.data)) {
+      throw Object.assign(new Error("Stripe invoices need manual review before sending."), { status: 409 });
     }
-    if (!stripeInvoice.hosted_invoice_url) {
-      stripeInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(latestInvoiceId)}`);
+    if (priorInvoices.data.some((prior) => prior.metadata?.accounting_invoice_id === invoice.id && prior.status !== "void")) {
+      throw Object.assign(new Error("Stripe already has an invoice for this PBA Books record. Review it before sending again."), { status: 409 });
     }
-  } else {
-    const amountPaid = Number(invoice.amount_paid_cents);
-    const invoiceLines = amountPaid > 0
-      ? [{ description: `Remaining balance for ${invoice.invoice_number}`, quantity: 1, amountCents: remaining }]
-      : [
-          ...(Array.isArray(invoice.lines) && invoice.lines.length ? invoice.lines : [{
-            description: invoice.memo || invoice.invoice_number,
-            quantity: 1,
-            amountCents: Number(invoice.subtotal_cents),
-          }]),
-          ...(Number(invoice.tax_cents) > 0 ? [{
-            description: "Sales tax",
-            quantity: 1,
-            amountCents: Number(invoice.tax_cents),
-          }] : []),
-        ];
-    for (const [index, line] of invoiceLines.entries()) {
+    const pendingPath = `/invoiceitems?customer=${encodeURIComponent(stripeCustomerId)}&pending=true&limit=100`;
+    const pending = await stripeGet(env, pendingPath);
+    const missing = missingInvoiceItems(expectedItems, pending, invoice.id, invoice.currency);
+    for (const line of missing) {
+      const index = expectedItems.indexOf(line);
       await stripeForm(env, "/invoiceitems", formBody({
         customer: stripeCustomerId,
         amount: line.amountCents,
         currency: invoice.currency,
-        description: line.quantity === 1 ? line.description : `${line.description} · Qty ${line.quantity}`,
+        description: line.description,
         ...metadata,
       }), `invoice-item:${invoice.id}:${index}:${line.amountCents}`);
+    }
+    if (missingInvoiceItems(expectedItems, await stripeGet(env, pendingPath), invoice.id, invoice.currency).length) {
+      throw Object.assign(new Error("Stripe invoice items could not be verified. Nothing was sent."), { status: 409 });
     }
     const draft = await stripeForm(env, "/invoices", formBody({
       customer: stripeCustomerId,
       collection_method: "send_invoice",
-      days_until_due: String(Math.max(0, Math.min(365, Math.ceil(
-        (Date.parse(`${invoice.due_date}T12:00:00Z`) - Date.now()) / 86_400_000,
-      )))),
+      days_until_due: daysUntilDue,
+      pending_invoice_items_behavior: "include",
       description: invoice.memo || invoice.invoice_number,
       footer: invoice.invoice_footer || undefined,
       ...Object.fromEntries((Array.isArray(invoice.custom_fields) ? invoice.custom_fields : []).flatMap((field, index) => [
@@ -333,7 +455,10 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
         [`custom_fields[${index}][value]`, field.value],
       ])),
       ...metadata,
-    }), `invoice:${invoice.id}:${remaining}`);
+    }), `invoice:v2:${invoice.id}:${remaining}:${storedDate(invoice.due_date)}`);
+    if (Number(draft.total) !== remaining || Number(draft.lines?.total_count) !== expectedItems.length) {
+      throw Object.assign(new Error("Stripe draft amount or line count does not match PBA Books. Nothing was sent; review the draft in Stripe."), { status: 409 });
+    }
     stripeInvoice = await stripeForm(env, `/invoices/${encodeURIComponent(draft.id)}/finalize`, formBody({}), `invoice-finalize:${draft.id}`);
     stripeInvoice = await stripeForm(env, `/invoices/${encodeURIComponent(draft.id)}/send`, formBody({}), `invoice-send:${draft.id}`);
   }
@@ -341,16 +466,208 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
   await sql`
     update accounting_invoices
     set stripe_invoice_id = ${stripeInvoice.id},
-        stripe_subscription_id = ${subscription?.id || null},
         updated_at = now()
     where id = ${invoice.id}
   `;
   await writeAudit(sql, env, actor, "invoice.collection_created", "invoice", invoice.id, {
     stripeInvoiceId: stripeInvoice.id,
-    stripeSubscriptionId: subscription?.id || null,
     recurring,
   });
-  return stripeInvoice.hosted_invoice_url;
+  return { invoiceUrl: stripeInvoice.hosted_invoice_url, setupUrl: null };
+}
+
+export async function updateInvoiceDetails(sql, env, actor, invoiceId, data) {
+  if (!data || typeof data.memo !== "string") {
+    throw Object.assign(new Error("Invoice memo is required."), { status: 422 });
+  }
+  const memo = requiredText(data.memo, "Invoice memo", 500).replace(/\r\n/g, "\n");
+  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(memo)) {
+    throw Object.assign(new Error("Invoice memo contains unsupported characters."), { status: 422 });
+  }
+  const dueDate = isoDate(data.dueDate, "Due date");
+  invoiceDaysUntilDue(dueDate, new Date(Date.now()));
+  const rows = await sql`
+    select i.*, c.stripe_customer_id
+    from accounting_invoices i join accounting_customers c on c.id = i.customer_id
+    where i.id = ${invoiceId} and i.company_id = ${companyId(env)}
+  `;
+  if (!rows.length) throw Object.assign(new Error("Invoice not found."), { status: 404 });
+  const invoice = rows[0];
+  const issueDate = invoice.issue_date instanceof Date
+    ? invoice.issue_date.toISOString().slice(0, 10)
+    : String(invoice.issue_date).slice(0, 10);
+  if (dueDate < issueDate) throw Object.assign(new Error("Due date cannot precede issue date."), { status: 422 });
+  if (invoice.status !== "open" || Number(invoice.amount_paid_cents) !== 0 || !invoice.stripe_invoice_id) {
+    throw Object.assign(new Error("Only an unpaid, sent, open invoice can have its memo and due date updated."), { status: 409 });
+  }
+  const stripePath = `/invoices/${encodeURIComponent(invoice.stripe_invoice_id)}`;
+  const current = await stripeGet(env, stripePath);
+  if (current.collection_method !== "send_invoice" ||
+      current.metadata?.accounting_invoice_id !== invoice.id ||
+      current.customer !== invoice.stripe_customer_id ||
+      Number(current.total) !== Number(invoice.total_cents) || Number(current.amount_paid) !== 0) {
+    throw Object.assign(new Error("Stripe invoice no longer matches PBA Books. Review it before editing."), { status: 409 });
+  }
+  if (current.status === "void" && current.latest_revision) {
+    const revision = await stripeGet(env, `/invoices/${encodeURIComponent(current.latest_revision)}`);
+    if (!Number.isFinite(Number(revision.due_date))) {
+      throw Object.assign(new Error("Stripe revision has no valid due date."), { status: 409 });
+    }
+    const revisionDay = new Intl.DateTimeFormat("en-CA", {
+      year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/New_York",
+    }).formatToParts(new Date(Number(revision.due_date) * 1000));
+    const datePart = (type) => revisionDay.find((part) => part.type === type)?.value;
+    const revisionDueDate = `${datePart("year")}-${datePart("month")}-${datePart("day")}`;
+    if (revision.from_invoice?.action !== "revision" || revision.from_invoice?.invoice !== current.id ||
+        revision.status !== "open" || revision.collection_method !== "send_invoice" ||
+        revision.metadata?.accounting_invoice_id !== invoice.id ||
+        revision.customer !== invoice.stripe_customer_id ||
+        Number(revision.total) !== Number(invoice.total_cents) || Number(revision.amount_paid) !== 0 ||
+        revision.description !== memo || revisionDueDate !== dueDate) {
+      throw Object.assign(new Error("Stripe revision does not match these invoice details. Review it before reconnecting PBA Books."), { status: 409 });
+    }
+    const paymentTerms = `Due ${new Intl.DateTimeFormat("en-US", {
+      month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
+    }).format(new Date(`${dueDate}T12:00:00Z`))}`;
+    const saved = await sql`
+      update accounting_invoices
+      set stripe_invoice_id = ${revision.id}, memo = ${memo}, due_date = ${dueDate},
+          payment_terms = ${paymentTerms}, updated_at = now()
+      where id = ${invoiceId} and company_id = ${companyId(env)} and status = 'open'
+        and amount_paid_cents = 0 and stripe_invoice_id = ${invoice.stripe_invoice_id}
+      returning id, invoice_number, memo, due_date, total_cents
+    `;
+    if (!saved.length) throw Object.assign(new Error("PBA Books could not reconnect the Stripe revision. Retry before sending."), { status: 409 });
+    await writeAudit(sql, env, actor, "invoice.revision_connected", "invoice", invoiceId, {
+      previousStripeInvoiceId: current.id, stripeInvoiceId: revision.id,
+      previousDueDate: invoice.due_date, dueDate, previousMemo: invoice.memo, memo,
+    });
+    return { ...saved[0], revisionConnected: true };
+  }
+  if (current.status !== "open") {
+    throw Object.assign(new Error("Stripe invoice is no longer open. Review it before editing."), { status: 409 });
+  }
+  const previousDue = new Date(Number(current.due_date) * 1000);
+  if (!Number.isFinite(previousDue.getTime())) {
+    throw Object.assign(new Error("Stripe invoice due date is unavailable."), { status: 409 });
+  }
+  const dueTimestamp = Math.floor(Date.parse(`${dueDate}T${previousDue.toISOString().slice(11, 19)}Z`) / 1000);
+  if (!Number.isSafeInteger(dueTimestamp) || dueTimestamp * 1000 <= Date.now()) {
+    throw Object.assign(new Error("Choose a future invoice due date."), { status: 422 });
+  }
+  if (Number(current.due_date) !== dueTimestamp) {
+    throw Object.assign(new Error("Stripe cannot change this finalized invoice's due date. Create and finalize a revision in Stripe, then save its details here to reconnect PBA Books."), { status: 409 });
+  }
+  const paymentTerms = `Due ${new Intl.DateTimeFormat("en-US", {
+    month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
+  }).format(new Date(`${dueDate}T12:00:00Z`))}`;
+  const updated = current.description === memo && Number(current.due_date) === dueTimestamp
+    ? current
+    : await stripeForm(env, stripePath, formBody({
+      description: memo,
+      "metadata[project_title]": memo.slice(0, 500),
+      "metadata[payment_terms_summary]": paymentTerms,
+    }));
+  if (updated.status !== "open" || updated.description !== memo ||
+      Number(updated.due_date) !== dueTimestamp || Number(updated.total) !== Number(invoice.total_cents)) {
+    throw Object.assign(new Error("Stripe did not confirm the invoice changes. PBA Books was not updated."), { status: 502 });
+  }
+  const saved = await sql`
+    update accounting_invoices
+    set memo = ${memo}, due_date = ${dueDate}, payment_terms = ${paymentTerms}, updated_at = now()
+    where id = ${invoiceId} and company_id = ${companyId(env)} and status = 'open'
+      and amount_paid_cents = 0 and stripe_invoice_id = ${invoice.stripe_invoice_id}
+    returning id, invoice_number, memo, due_date, total_cents
+  `;
+  if (!saved.length) {
+    throw Object.assign(new Error("Stripe was updated, but PBA Books could not save the change. Retry before resending."), { status: 409 });
+  }
+  await writeAudit(sql, env, actor, "invoice.details_updated", "invoice", invoiceId, {
+    stripeInvoiceId: invoice.stripe_invoice_id,
+    previousDueDate: invoice.due_date,
+    dueDate,
+    previousMemo: invoice.memo,
+    memo,
+  });
+  return saved[0];
+}
+
+async function createRecurringPaymentSetup(sql, env, actor, invoiceId) {
+  const rows = await sql`
+    select i.*, c.name customer_name, c.email customer_email, c.customer_number,
+      c.stripe_customer_id
+    from accounting_invoices i join accounting_customers c on c.id = i.customer_id
+    where i.id = ${invoiceId} and i.company_id = ${companyId(env)}
+  `;
+  if (!rows.length) throw Object.assign(new Error("Invoice not found."), { status: 404 });
+  const invoice = rows[0];
+  if (!invoice.recurring) throw Object.assign(new Error("This invoice is not set up for monthly billing."), { status: 422 });
+  if (invoice.status !== "paid" || Number(invoice.amount_paid_cents) < Number(invoice.total_cents)) {
+    throw Object.assign(new Error("The initial service-period invoice must be paid before setting up monthly autopay."), { status: 409 });
+  }
+  if (
+    invoice.stripe_setup_checkout_url && invoice.stripe_subscription_id &&
+    invoice.stripe_setup_checkout_expires_at && new Date(invoice.stripe_setup_checkout_expires_at).getTime() > Date.now() + 60_000
+  ) {
+    return { setupUrl: invoice.stripe_setup_checkout_url, billingDay: invoice.billing_day, alreadyPrepared: true };
+  }
+  let stripeCustomerId = invoice.stripe_customer_id;
+  if (!stripeCustomerId) {
+    const customer = await stripeForm(env, "/customers", formBody({
+      name: invoice.customer_name,
+      email: invoice.customer_email,
+      "metadata[customer_number]": invoice.customer_number,
+    }), `customer:${invoice.customer_id}`);
+    stripeCustomerId = customer.id;
+    await sql`
+      update accounting_customers set stripe_customer_id = ${stripeCustomerId}, updated_at = now()
+      where id = ${invoice.customer_id}
+    `;
+  }
+  const anchor = nextMonthlyAnchor(invoice.billing_day, new Date());
+  let subscription;
+  if (invoice.stripe_subscription_id) {
+    subscription = await stripeGet(env, `/subscriptions/${encodeURIComponent(invoice.stripe_subscription_id)}`);
+    if (subscription.customer !== stripeCustomerId || !["active", "trialing"].includes(subscription.status)) {
+      throw Object.assign(new Error("The existing Stripe subscription needs review before payment setup."), { status: 409 });
+    }
+  } else {
+    const subscriptionData = recurringSubscriptionFields({
+      customerId: stripeCustomerId,
+      invoiceId: invoice.id,
+      customerNumber: invoice.customer_number,
+      currency: invoice.currency,
+      billingDay: invoice.billing_day,
+      now: new Date(),
+      subtotalCents: Number(invoice.subtotal_cents),
+      taxCents: Number(invoice.tax_cents),
+      memo: invoice.memo || invoice.invoice_number,
+    });
+    subscription = await stripeForm(env, "/subscriptions", formBody(subscriptionData.fields), `invoice-subscription:${invoice.id}:${subscriptionData.anchor.date}:${invoice.total_cents}`);
+  }
+  const setupSession = await stripeForm(env, "/checkout/sessions", formBody({
+    mode: "setup",
+    customer: stripeCustomerId,
+    success_url: `${env.PUBLIC_BOOKS_URL || "https://books.palmettobusinessautomation.com"}/?payment_setup=complete`,
+    cancel_url: `${env.PUBLIC_BOOKS_URL || "https://books.palmettobusinessautomation.com"}/?payment_setup=cancelled`,
+    "setup_intent_data[metadata][accounting_invoice_id]": invoice.id,
+    "setup_intent_data[metadata][stripe_subscription_id]": subscription.id,
+    "metadata[purpose]": "recurring_payment_setup",
+  }), `invoice-payment-setup:${invoice.id}:${subscription.id}:${new Date().toISOString().slice(0, 10)}`);
+  await sql`
+    update accounting_invoices
+    set stripe_subscription_id = ${subscription.id},
+        stripe_setup_checkout_url = ${setupSession.url},
+        stripe_setup_checkout_expires_at = to_timestamp(${setupSession.expires_at}),
+        updated_at = now()
+    where id = ${invoice.id}
+  `;
+  await writeAudit(sql, env, actor, "invoice.recurring_setup_created", "invoice", invoice.id, {
+    stripeSubscriptionId: subscription.id,
+    billingDay: Number(invoice.billing_day),
+    firstRenewalDate: anchor.date,
+  });
+  return { setupUrl: setupSession.url, billingDay: Number(invoice.billing_day), firstRenewalDate: anchor.date };
 }
 
 async function createExpense(sql, env, actor, data) {
@@ -947,6 +1264,80 @@ async function recordStripePayment(sql, env, event) {
   ]);
 }
 
+async function recordRecurringPaymentMethodSetup(sql, env, event) {
+  const session = event.data.object;
+  if (session.mode !== "setup" || !session.setup_intent) return;
+  const setupIntentId = typeof session.setup_intent === "string" ? session.setup_intent : session.setup_intent.id;
+  const setupIntent = await stripeGet(env, `/setup_intents/${encodeURIComponent(setupIntentId)}`);
+  const invoiceId = setupIntent.metadata?.accounting_invoice_id;
+  const subscriptionId = setupIntent.metadata?.stripe_subscription_id;
+  const paymentMethodId = typeof setupIntent.payment_method === "string"
+    ? setupIntent.payment_method
+    : setupIntent.payment_method?.id;
+  if (!invoiceId || !subscriptionId || !paymentMethodId || setupIntent.status !== "succeeded") return;
+  await stripeForm(env, `/subscriptions/${encodeURIComponent(subscriptionId)}`, formBody({
+    default_payment_method: paymentMethodId,
+    "payment_settings[save_default_payment_method]": "on_subscription",
+  }), `invoice-default-payment-method:${invoiceId}:${paymentMethodId}`);
+  const rows = await sql`
+    update accounting_invoices
+    set payment_method_setup_at = now(), updated_at = now()
+    where id = ${invoiceId} and company_id = ${companyId(env)}
+      and stripe_subscription_id = ${subscriptionId}
+    returning id
+  `;
+  if (rows.length) await writeAudit(sql, env, "system:stripe", "invoice.payment_method_setup", "invoice", invoiceId, {
+    stripeSubscriptionId: subscriptionId,
+  });
+}
+
+export async function activateMonthlyAutopay(sql, env, stripeInvoice) {
+  if (stripeInvoice.object !== "invoice" || !stripeInvoice.id || Number(stripeInvoice.amount_paid) <= 0) return;
+  const rows = await sql`
+    select i.id, i.stripe_subscription_id, i.payment_method_setup_at, c.stripe_customer_id
+    from accounting_invoices i join accounting_customers c on c.id = i.customer_id
+    where i.company_id = ${companyId(env)} and i.stripe_invoice_id = ${stripeInvoice.id}
+      and i.status = 'paid' and i.recurring = true and i.stripe_subscription_id is not null
+    limit 1
+  `;
+  if (!rows.length || rows[0].payment_method_setup_at) return;
+  const invoice = rows[0];
+  const subscription = await stripeGet(env, `/subscriptions/${encodeURIComponent(invoice.stripe_subscription_id)}`);
+  const paymentMethodId = typeof subscription.default_payment_method === "string"
+    ? subscription.default_payment_method : subscription.default_payment_method?.id;
+  if (subscription.customer !== invoice.stripe_customer_id || !paymentMethodId ||
+      !["active", "trialing"].includes(subscription.status)) return;
+  if (subscription.collection_method === "send_invoice") {
+    const updated = await stripeForm(env, `/subscriptions/${encodeURIComponent(subscription.id)}`, formBody({
+      collection_method: "charge_automatically",
+      default_payment_method: paymentMethodId,
+    }), `monthly-autopay-activate:${invoice.id}`);
+    if (updated.collection_method !== "charge_automatically") throw new Error("Stripe did not activate monthly autopay.");
+  } else if (subscription.collection_method !== "charge_automatically") return;
+  const saved = await sql`
+    update accounting_invoices set payment_method_setup_at = now(), updated_at = now()
+    where id = ${invoice.id} and company_id = ${companyId(env)}
+      and stripe_subscription_id = ${subscription.id} and payment_method_setup_at is null
+    returning id
+  `;
+  if (saved.length) await writeAudit(sql, env, "system:stripe", "invoice.monthly_autopay_activated", "invoice", invoice.id, {
+    stripeSubscriptionId: subscription.id,
+  });
+}
+
+async function reconcileMonthlyAutopay(sql, env) {
+  const pending = await sql`
+    select stripe_invoice_id from accounting_invoices
+    where company_id = ${companyId(env)} and status = 'paid' and recurring = true
+      and stripe_invoice_id is not null and stripe_subscription_id is not null
+      and payment_method_setup_at is null
+    order by updated_at desc limit 50
+  `;
+  for (const invoice of pending) {
+    await activateMonthlyAutopay(sql, env, { object: "invoice", id: invoice.stripe_invoice_id, amount_paid: 1 });
+  }
+}
+
 async function handleStripeWebhook(request, env) {
   const raw = await request.text();
   if (!await verifyStripeWebhook(raw, request.headers.get("stripe-signature"), env.STRIPE_WEBHOOK_SECRET)) {
@@ -961,8 +1352,11 @@ async function handleStripeWebhook(request, env) {
   `;
   if (!processed.length) return new Response("ok");
   try {
-    if (["checkout.session.completed", "checkout.session.async_payment_succeeded", "invoice.paid"].includes(event.type)) {
+    if (event.type === "checkout.session.completed" && event.data.object.mode === "setup") {
+      await recordRecurringPaymentMethodSetup(sql, env, event);
+    } else if (["checkout.session.completed", "checkout.session.async_payment_succeeded", "invoice.paid"].includes(event.type)) {
       await recordStripePayment(sql, env, event);
+      if (event.type === "invoice.paid") await activateMonthlyAutopay(sql, env, event.data.object);
     } else if (event.type === "financial_connections.account.refreshed_transactions") {
       await syncBankTransactions(sql, env, "system:stripe", false);
     } else if (event.type === "charge.succeeded" && event.data.object.balance_transaction) {
@@ -1179,7 +1573,10 @@ async function api(request, env, actor) {
   if (path === "/api/invoices" && method === "GET") {
     return json({ invoices: await sql`
       select i.id, i.invoice_number, i.issue_date, i.due_date, i.status, i.total_cents,
-        i.amount_paid_cents, i.recurring, c.name customer_name, c.customer_number
+        i.memo, i.payment_terms, i.stripe_invoice_id, i.stripe_subscription_id,
+        i.amount_paid_cents, i.recurring, i.billing_day, i.payment_method_setup_at,
+        (i.stripe_setup_checkout_url is not null and i.stripe_setup_checkout_expires_at > now()) setup_link_ready,
+        c.name customer_name, c.customer_number, c.email customer_email
       from accounting_invoices i join accounting_customers c on c.id = i.customer_id
       where i.company_id = ${companyId(env)}
       order by i.issue_date desc, i.created_at desc limit 200
@@ -1188,9 +1585,17 @@ async function api(request, env, actor) {
   if (path === "/api/invoices" && method === "POST") {
     return json({ invoice: await createInvoice(sql, env, actor.email, await bodyJson(request)) }, 201);
   }
+  const editInvoiceId = routeId(path, /^\/api\/invoices\/([^/]+)$/);
+  if (editInvoiceId && method === "PATCH") {
+    return json({ invoice: await updateInvoiceDetails(sql, env, actor.email, editInvoiceId, await bodyJson(request)) });
+  }
   const collectInvoiceId = routeId(path, /^\/api\/invoices\/([^/]+)\/collect$/);
   if (collectInvoiceId && method === "POST") {
-    return json({ checkoutUrl: await createStripeCollection(sql, env, actor.email, collectInvoiceId) });
+    return json(await createStripeCollection(sql, env, actor.email, collectInvoiceId));
+  }
+  const setupInvoiceId = routeId(path, /^\/api\/invoices\/([^/]+)\/setup$/);
+  if (setupInvoiceId && method === "POST") {
+    return json(await createRecurringPaymentSetup(sql, env, actor.email, setupInvoiceId));
   }
   if (path === "/api/expenses" && method === "GET") {
     return json({ expenses: await sql`
@@ -1347,6 +1752,7 @@ export default {
     ctx.waitUntil((async () => {
       const sql = database(env);
       await syncBankTransactions(sql, env);
+      await reconcileMonthlyAutopay(sql, env);
     })());
   },
 };

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "check": "node --check worker/index.js && node --check worker/auth.js && node --check worker/db.js && node --check worker/journals.js && node --check worker/ledger.js && node --check worker/stripe.js",
+    "check": "node --check worker/index.js && node --check worker/auth.js && node --check worker/db.js && node --check worker/journals.js && node --check worker/ledger.js && node --check worker/stripe.js && node --check worker/billing.js && node --check scripts/smoke-monthly-sandbox.mjs",
     "test": "node --test",
     "deploy": "npm run build && wrangler deploy"
   },
