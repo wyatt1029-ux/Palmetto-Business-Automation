@@ -453,12 +453,14 @@ function Sales({ customers, reloadCustomers }) {
               const balance = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
               return (
                 <div className="table-row" key={invoice.id}>
-                  <strong data-label="Invoice">{invoice.invoice_number}<small>{invoice.recurring ? `Monthly · renews on the ${invoice.billing_day}${invoice.billing_day === 1 ? "st" : invoice.billing_day === 2 ? "nd" : invoice.billing_day === 3 ? "rd" : "th"} · ${invoice.payment_method_setup_at ? "payment method ready" : invoice.setup_link_ready ? "payment setup pending" : "initial invoice first"}` : "One-time"}</small></strong>
+                  <strong data-label="Invoice">{invoice.invoice_number}<small>{invoice.recurring ? invoice.billing_day ? `Monthly · renews on the ${invoice.billing_day}${invoice.billing_day === 1 ? "st" : invoice.billing_day === 2 ? "nd" : invoice.billing_day === 3 ? "rd" : "th"} · ${invoice.payment_method_setup_at ? "payment method ready" : invoice.setup_link_ready ? "payment setup pending" : "initial invoice first"}` : "Monthly · billing day not set" : "One-time"}</small></strong>
                   <span data-label="Customer">{invoice.customer_name}<small>{invoice.customer_number}</small></span>
                   <span data-label="Due">{shortDate(invoice.due_date)}</span>
                   <span data-label="Status"><Status tone={invoice.status === "paid" ? "good" : "warn"}>{invoice.status}</Status></span>
                   <b data-label="Balance">{money(balance)}</b>
-                  <span>{invoice.recurring && balance === 0 && !invoice.payment_method_setup_at
+                  <span>{invoice.recurring && balance === 0 && !invoice.billing_day
+                    ? "Billing day needed"
+                    : invoice.recurring && balance === 0 && !invoice.payment_method_setup_at
                     ? <button className="mini-button" onClick={() => setupRecurring(invoice)} disabled={working}>{invoice.setup_link_ready ? "Copy setup link" : "Set up autopay"}</button>
                     : balance > 0
                       ? <button className="mini-button" aria-label={`${invoice.stripe_invoice_id ? "Open payment link" : "Send invoice"} for ${invoice.customer_name}`} title={invoice.stripe_invoice_id ? "Open the existing Stripe invoice link" : "Send this invoice by email through Stripe"} onClick={() => collect(invoice)} disabled={working}>{invoice.stripe_invoice_id ? "Open payment link" : "Send invoice"}</button>

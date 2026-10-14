@@ -104,9 +104,21 @@ Subscribe the accounting webhook endpoint to:
 - `payout.paid`
 - `financial_connections.account.refreshed_transactions`
 
-## Approval gate
+Production Stripe uses the `PBA Books Live Billing` event destination
+(`we_1UQX8rQUrzwsOfuAB7JIdgJe`) at
+`https://books.palmettobusinessautomation.com/api/stripe/webhook`.
+Keep its signing secret in the Worker's `STRIPE_WEBHOOK_SECRET` binding and the
+live API key in `STRIPE_SECRET_KEY`; never commit either value. The public
+`STRIPE_PUBLISHABLE_KEY` is set in `wrangler.toml`. The PBA Books Worker is
+deployed with Wrangler to its custom domain; this does not deploy the public
+marketing site through Cloudflare Pages.
 
-Do not run the migration against production, create live Stripe sessions, connect the live bank,
-or deploy the Worker until the chart of accounts has been reviewed and production access/secrets
-are configured. The owner has confirmed that the opening balance is zero; no opening-balance
-entry should be fabricated.
+## Production safeguards
+
+The recurring billing migration was applied to production on October 14, 2026 with owner
+approval. Tidal's existing invoice `PBA-INV-000004` was assigned its agreed 7th-of-month
+billing anchor; it was not sent. Production Stripe keys and the live webhook secret are
+Worker bindings, not repository files. Review the chart of accounts before relying on
+financial reports, and obtain owner approval before future production migrations, live
+Stripe sessions, or a bank connection. The owner confirmed the opening balance is zero;
+do not fabricate an opening-balance entry.
