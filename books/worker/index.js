@@ -13,7 +13,7 @@ import {
 } from "./ledger.js";
 import { postJournal, reverseJournal } from "./journals.js";
 import { stripeForm, stripeGet, verifyStripeWebhook } from "./stripe.js";
-import { recurringSubscriptionFields } from "./billing.js";
+import { invoiceDaysUntilDue, missingInvoiceItems, recurringSubscriptionFields } from "./billing.js";
 
 const headers = {
   "content-type": "application/json; charset=utf-8",
@@ -234,7 +234,7 @@ async function createInvoice(sql, env, actor, data) {
   return { id: invoiceId, invoiceNumber };
 }
 
-async function createStripeCollection(sql, env, actor, invoiceId) {
+export async function createStripeCollection(sql, env, actor, invoiceId) {
   const rows = await sql`
     select i.*, c.name customer_name, c.email customer_email, c.customer_number, c.stripe_customer_id,
       coalesce((select json_agg(json_build_object(
@@ -253,6 +253,34 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
     const existingInvoice = await stripeGet(env, `/invoices/${encodeURIComponent(invoice.stripe_invoice_id)}`);
     return { invoiceUrl: existingInvoice.hosted_invoice_url || null, setupUrl: null, alreadyPrepared: true };
   }
+  const daysUntilDue = invoiceDaysUntilDue(invoice.due_date, new Date(Date.now()));
+  const remaining = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
+  if (!Number.isSafeInteger(remaining) || remaining <= 0) {
+    throw Object.assign(new Error("Invoice balance is invalid."), { status: 422 });
+  }
+  const amountPaid = Number(invoice.amount_paid_cents);
+  const invoiceLines = amountPaid > 0
+    ? [{ description: `Remaining balance for ${invoice.invoice_number}`, quantity: 1, amountCents: remaining }]
+    : [
+        ...(Array.isArray(invoice.lines) && invoice.lines.length ? invoice.lines : [{
+          description: invoice.memo || invoice.invoice_number,
+          quantity: 1,
+          amountCents: Number(invoice.subtotal_cents),
+        }]),
+        ...(Number(invoice.tax_cents) > 0 ? [{
+          description: "Sales tax",
+          quantity: 1,
+          amountCents: Number(invoice.tax_cents),
+        }] : []),
+      ];
+  const expectedItems = invoiceLines.map((line) => ({
+    amountCents: Number(line.amountCents),
+    description: Number(line.quantity) === 1 ? line.description : `${line.description} · Qty ${line.quantity}`,
+  }));
+  if (expectedItems.some((line) => !Number.isSafeInteger(line.amountCents) || line.amountCents <= 0) ||
+      expectedItems.reduce((sum, line) => sum + line.amountCents, 0) !== remaining) {
+    throw Object.assign(new Error("Invoice lines do not match the open balance."), { status: 422 });
+  }
   let stripeCustomerId = invoice.stripe_customer_id;
   if (!stripeCustomerId) {
     const customer = await stripeForm(env, "/customers", formBody({
@@ -266,7 +294,6 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
       where id = ${invoice.customer_id}
     `;
   }
-  const remaining = Number(invoice.total_cents) - Number(invoice.amount_paid_cents);
   const recurring = invoice.recurring;
   const metadata = {
     "metadata[accounting_invoice_id]": invoice.id,
@@ -277,36 +304,34 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
   };
   let stripeInvoice;
   {
-    const amountPaid = Number(invoice.amount_paid_cents);
-    const invoiceLines = amountPaid > 0
-      ? [{ description: `Remaining balance for ${invoice.invoice_number}`, quantity: 1, amountCents: remaining }]
-      : [
-          ...(Array.isArray(invoice.lines) && invoice.lines.length ? invoice.lines : [{
-            description: invoice.memo || invoice.invoice_number,
-            quantity: 1,
-            amountCents: Number(invoice.subtotal_cents),
-          }]),
-          ...(Number(invoice.tax_cents) > 0 ? [{
-            description: "Sales tax",
-            quantity: 1,
-            amountCents: Number(invoice.tax_cents),
-          }] : []),
-        ];
-    for (const [index, line] of invoiceLines.entries()) {
+    const priorInvoices = await stripeGet(env, `/invoices?customer=${encodeURIComponent(stripeCustomerId)}&limit=100`);
+    if (priorInvoices.has_more || !Array.isArray(priorInvoices.data)) {
+      throw Object.assign(new Error("Stripe invoices need manual review before sending."), { status: 409 });
+    }
+    if (priorInvoices.data.some((prior) => prior.metadata?.accounting_invoice_id === invoice.id && prior.status !== "void")) {
+      throw Object.assign(new Error("Stripe already has an invoice for this PBA Books record. Review it before sending again."), { status: 409 });
+    }
+    const pendingPath = `/invoiceitems?customer=${encodeURIComponent(stripeCustomerId)}&pending=true&limit=100`;
+    const pending = await stripeGet(env, pendingPath);
+    const missing = missingInvoiceItems(expectedItems, pending, invoice.id, invoice.currency);
+    for (const line of missing) {
+      const index = expectedItems.indexOf(line);
       await stripeForm(env, "/invoiceitems", formBody({
         customer: stripeCustomerId,
         amount: line.amountCents,
         currency: invoice.currency,
-        description: line.quantity === 1 ? line.description : `${line.description} · Qty ${line.quantity}`,
+        description: line.description,
         ...metadata,
       }), `invoice-item:${invoice.id}:${index}:${line.amountCents}`);
+    }
+    if (missingInvoiceItems(expectedItems, await stripeGet(env, pendingPath), invoice.id, invoice.currency).length) {
+      throw Object.assign(new Error("Stripe invoice items could not be verified. Nothing was sent."), { status: 409 });
     }
     const draft = await stripeForm(env, "/invoices", formBody({
       customer: stripeCustomerId,
       collection_method: "send_invoice",
-      days_until_due: String(Math.max(0, Math.min(365, Math.ceil(
-        (Date.parse(`${invoice.due_date}T12:00:00Z`) - Date.now()) / 86_400_000,
-      )))),
+      days_until_due: daysUntilDue,
+      pending_invoice_items_behavior: "include",
       description: invoice.memo || invoice.invoice_number,
       footer: invoice.invoice_footer || undefined,
       ...Object.fromEntries((Array.isArray(invoice.custom_fields) ? invoice.custom_fields : []).flatMap((field, index) => [
@@ -314,7 +339,10 @@ async function createStripeCollection(sql, env, actor, invoiceId) {
         [`custom_fields[${index}][value]`, field.value],
       ])),
       ...metadata,
-    }), `invoice:${invoice.id}:${remaining}`);
+    }), `invoice:v2:${invoice.id}:${remaining}:${String(invoice.due_date).slice(0, 10)}`);
+    if (Number(draft.total) !== remaining || Number(draft.lines?.total_count) !== expectedItems.length) {
+      throw Object.assign(new Error("Stripe draft amount or line count does not match PBA Books. Nothing was sent; review the draft in Stripe."), { status: 409 });
+    }
     stripeInvoice = await stripeForm(env, `/invoices/${encodeURIComponent(draft.id)}/finalize`, formBody({}), `invoice-finalize:${draft.id}`);
     stripeInvoice = await stripeForm(env, `/invoices/${encodeURIComponent(draft.id)}/send`, formBody({}), `invoice-send:${draft.id}`);
   }

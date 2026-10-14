@@ -1,6 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { nextMonthlyAnchor, recurringStripeItems, recurringSubscriptionFields } from "../worker/billing.js";
+import { invoiceDaysUntilDue, missingInvoiceItems, nextMonthlyAnchor, recurringStripeItems, recurringSubscriptionFields } from "../worker/billing.js";
+
+test("invoice due days accepts both date-only and Neon timestamp values", () => {
+  const now = new Date("2026-10-14T19:00:00.000Z");
+  assert.equal(invoiceDaysUntilDue("2026-10-15", now), 1);
+  assert.equal(invoiceDaysUntilDue("2026-10-15T00:00:00.000Z", now), 1);
+  assert.throws(() => invoiceDaysUntilDue("2026-02-31", now), /invalid/);
+  assert.throws(() => invoiceDaysUntilDue("2026-10-13T00:00:00.000Z", now), /passed/);
+});
+
+test("pending Stripe items are reused only when every line matches this invoice", () => {
+  const expected = [
+    { amountCents: 15000, description: "Monthly website hosting and routine maintenance" },
+    { amountCents: 1350, description: "Sales tax" },
+  ];
+  const service = { invoice: null, amount: 15000, currency: "usd", description: expected[0].description, metadata: { accounting_invoice_id: "invoice-1" } };
+  const tax = { invoice: null, amount: 1350, currency: "usd", description: expected[1].description, metadata: { accounting_invoice_id: "invoice-1" } };
+  assert.deepEqual(missingInvoiceItems(expected, { data: [tax, service], has_more: false }, "invoice-1", "usd"), []);
+  assert.deepEqual(missingInvoiceItems(expected, { data: [service], has_more: false }, "invoice-1", "usd"), [expected[1]]);
+  assert.throws(() => missingInvoiceItems(expected, { data: [service, service], has_more: false }, "invoice-1", "usd"), /unexpected pending/);
+  assert.throws(() => missingInvoiceItems(expected, { data: [{ ...service, metadata: { accounting_invoice_id: "other" } }], has_more: false }, "invoice-1", "usd"), /unexpected pending/);
+  assert.throws(() => missingInvoiceItems(expected, { data: [service], has_more: true }, "invoice-1", "usd"), /manual review/);
+});
 
 test("monthly renewal anchor selects the next requested day", () => {
   assert.deepEqual(
