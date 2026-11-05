@@ -2193,6 +2193,17 @@ body { font-size: 16px; }
 .price-preview-grid span { color: var(--accent); font-weight: 700; letter-spacing: -.04em; }
 .text-cta { display: inline-flex; gap: 8px; color: var(--accent); font-weight: 700; padding: 10px 0; }
 .text-cta:hover, .text-cta:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Practical public guide */
+.resource-checklist .example-card { align-content: start; }
+.resource-checklist ul,
+.resource-launch-panel ul { display: grid; gap: 12px; padding-left: 22px; margin: 0; color: var(--muted); line-height: 1.65; }
+.resource-checklist li::marker,
+.resource-launch-panel li::marker { color: var(--accent); }
+.resource-launch-panel { display: grid; gap: 18px; }
+.resource-launch-panel h2,
+.resource-launch-panel p { margin: 0; }
+.resource-launch-panel > p:last-child { max-width: 72ch; color: var(--muted); line-height: 1.65; }
 .example-proof { padding: clamp(36px, 6vw, 72px); border-radius: var(--radius-xl); background: #dfeae3; }
 
 .services-jump-nav { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 34px; }

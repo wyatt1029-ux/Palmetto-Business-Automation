@@ -33,6 +33,7 @@ const publicDirectories = [
   "who-i-help",
   "case-studies",
   "faq",
+  "website-intake-checklist",
   "owner",
 ];
 const fingerprintedAssets = [
@@ -94,6 +95,7 @@ const marketingRoutes = new Map([
   ["who-i-help/index.html", { path: "/who-i-help/", current: "/who-i-help/" }],
   ["about/index.html", { path: "/about/", current: "/about/" }],
   ["faq/index.html", { path: "/faq/", current: "/faq/" }],
+  ["website-intake-checklist/index.html", { path: "/website-intake-checklist/" }],
   ["contact/index.html", { path: "/contact/", current: "/contact/" }],
   ["case-studies/business-dashboard/index.html", { path: "/case-studies/business-dashboard/", current: "/example-builds/" }],
   ["case-studies/church-directory-hub/index.html", { path: "/case-studies/church-directory-hub/", current: "/example-builds/" }],
